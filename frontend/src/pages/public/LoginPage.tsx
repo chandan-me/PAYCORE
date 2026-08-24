@@ -8,6 +8,16 @@ interface Props {
   onLoginSuccess: (token: string, user: any, merchantId?: string) => void;
 }
 
+const formatErrorDetail = (detail: any): string => {
+  if (!detail) return 'An error occurred. Please try again.';
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((d: any) => (typeof d === 'string' ? d : d.msg || JSON.stringify(d))).join(', ');
+  }
+  if (typeof detail === 'object' && detail.msg) return detail.msg;
+  return JSON.stringify(detail);
+};
+
 export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
   const [smartInput, setSmartInput] = useState('');
   const [password, setPassword] = useState('password123');
@@ -70,7 +80,7 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
       onLoginSuccess(access_token, { id: user_id, email: smartInput || 'demo@paycore.io', role }, merchant_id);
       navigate('/dashboard/overview');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Invalid login credentials. Please check your password.');
+      setError(formatErrorDetail(err.response?.data?.detail) || 'Invalid login credentials. Please check your password.');
     } finally {
       setLoading(false);
     }
@@ -93,8 +103,7 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
       navigate('/dashboard/overview');
     } catch (err: any) {
       console.error('Google Auth backend error:', err);
-      const detail = err.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : 'Google Sign-In failed to connect to backend.');
+      setError(formatErrorDetail(err.response?.data?.detail) || 'Google Sign-In failed to connect to backend.');
     } finally {
       setLoading(false);
     }
@@ -104,20 +113,24 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
     setError('');
     try {
       const resp = await api.post('/auth/otp/request', { phone_number: smartInput.trim() });
-      setOtpMsg(resp.data.message);
+      setOtpMsg(resp.data.message || `6-digit OTP code sent to ${smartInput.trim()}`);
       setShowOtpModal(true);
     } catch (err: any) {
-      setError('Failed to send OTP code.');
+      setError(formatErrorDetail(err.response?.data?.detail) || 'Failed to send OTP code.');
     }
   };
 
   const handleVerifyOtp = async () => {
+    if (!otpCode || otpCode.length !== 6) {
+      setOtpMsg('Please enter a valid 6-digit OTP code.');
+      return;
+    }
     try {
       await api.post('/auth/otp/verify', { phone_number: smartInput.trim(), otp_code: otpCode });
       setShowOtpModal(false);
-      handleSelectGoogleAccount({ name: 'Phone User', email: `${smartInput.trim()}@phone.paycore.io` });
+      handleSelectGoogleAccount({ name: 'Phone User', email: `${smartInput.trim().replace(/\s+/g, '')}@phone.paycore.io` });
     } catch (err: any) {
-      setOtpMsg(err.response?.data?.detail || 'Invalid OTP code.');
+      setOtpMsg(formatErrorDetail(err.response?.data?.detail) || 'Invalid 6-digit OTP code.');
     }
   };
 
@@ -334,7 +347,7 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
                 placeholder="123456"
               />
             </div>
-            {otpMsg && <p className="text-[11px] text-slate-400 text-center font-mono">{otpMsg}</p>}
+            {otpMsg && <p className="text-[11px] text-rose-400 text-center font-mono font-semibold">{otpMsg}</p>}
             <div className="flex gap-2 justify-end pt-2">
               <button
                 onClick={() => setShowOtpModal(false)}
