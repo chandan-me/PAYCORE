@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
+import { ArrowRight, AlertCircle, ShieldCheck, Eye, EyeOff, Loader2 } from 'lucide-react';
 import api from '../../services/api';
 import { GoogleAccountChooserModal } from '../../components/GoogleAccountChooserModal';
 
@@ -11,6 +11,7 @@ interface Props {
 export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
   const [smartInput, setSmartInput] = useState('');
   const [password, setPassword] = useState('password123');
+  const [showPassword, setShowPassword] = useState(false);
   const [showPasswordStep, setShowPasswordStep] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,7 +29,6 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
   const isEmail = smartInput.includes('@');
   const isPhone = /^\+?[0-9\s\-]{8,15}$/.test(smartInput.trim()) && !isEmail;
 
-  // Attempt Google GIS script initialization if available
   useEffect(() => {
     try {
       const script = document.createElement('script');
@@ -88,6 +88,7 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
         google_token: account.google_token
       });
       const { access_token, user_id, role, merchant_id } = resp.data;
+      // Instant login & redirect to dashboard for Google accounts (no password step needed!)
       onLoginSuccess(access_token, { id: user_id, email: account.email, role }, merchant_id);
       navigate('/dashboard/overview');
     } catch (err: any) {
@@ -164,7 +165,7 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
         </div>
       </div>
 
-      {/* RIGHT LOGIN FORM SECTION (Razorpay Style) */}
+      {/* RIGHT LOGIN FORM SECTION */}
       <div className="w-full lg:w-[500px] flex flex-col justify-between p-8 sm:p-12 bg-[#090d16] z-10">
         <div className="max-w-sm w-full mx-auto my-auto space-y-6">
           <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center font-black text-white text-2xl shadow-xl shadow-indigo-500/25 mb-2">
@@ -176,7 +177,12 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
             <p className="text-xs text-slate-400">Welcome to PAYCORE Platform</p>
           </div>
 
-          {!showPasswordStep ? (
+          {loading ? (
+            <div className="p-8 glass-card rounded-2xl flex flex-col items-center justify-center text-center space-y-3">
+              <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+              <div className="text-xs font-mono text-slate-300">Authenticating & Redirecting to Dashboard...</div>
+            </div>
+          ) : !showPasswordStep ? (
             <form onSubmit={handleContinue} className="space-y-4">
               <div>
                 <input
@@ -244,14 +250,23 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
 
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">Enter Account Password</label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500"
-                  placeholder="••••••••"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-4 pr-10 py-3 text-sm text-white focus:outline-none focus:border-indigo-500"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-200"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               {error && (
