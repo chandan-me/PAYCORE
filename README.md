@@ -1,11 +1,5 @@
 # 🚀 PAYCORE — Production-Grade Custom Payment Service Platform
 
-[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%2016-blue.svg)](https://www.postgresql.org/)
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
-[![React](https://img.shields.io/badge/Frontend-React%2018%20%2B%20TypeScript-61DAFB.svg)](https://reactjs.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS%20v4-38B2AC.svg)](https://tailwindcss.com/)
-[![Build Status](https://img.shields.io/badge/Tests-Passing%20100%25-brightgreen.svg)]()
-
 **PAYCORE** is a custom payment orchestration service platform built architecturally similar to Stripe and Razorpay. It provides merchant onboarding, customer accounts, dual-mode payment intents (`TEST` vs `LIVE`), double-entry financial ledger accounting, rule-based risk engines, provider abstraction adapters, hosted customer checkout, HMAC SHA-256 webhooks, idempotency payload caching, and full analytics dashboards.
 
 ---
@@ -208,9 +202,3 @@ Run the backend Pytest suite anytime:
 cd backend
 python -m pytest tests/
 ```
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
