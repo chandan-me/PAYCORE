@@ -10,9 +10,11 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { PaycoreLogo } from '../../components/PaycoreLogo';
+import { useToast } from '../../context/ToastContext';
 
 export const ApiDocsPage: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [copiedLang, setCopiedLang] = useState<string | null>(null);
   const [activeEndpoint, setActiveEndpoint] = useState<'intents' | 'sessions' | 'payouts' | 'webhooks'>('intents');
 
@@ -100,6 +102,7 @@ app.post('/paycore-webhook', express.raw({ type: 'application/json' }), (req, re
   const copyCode = (code: string, lang: string) => {
     navigator.clipboard.writeText(code);
     setCopiedLang(lang);
+    toast.copied(code, `${lang.toUpperCase()} snippet copied to clipboard`);
     setTimeout(() => setCopiedLang(null), 2000);
   };
 

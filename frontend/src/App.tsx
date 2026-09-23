@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
 import { CommandPalette } from './components/CommandPalette';
 import { PageLoader } from './components/PageLoader';
+import { ToastProvider } from './context/ToastContext';
 
 // Lazy Loaded Pages for Optimized Performance & Code Splitting
 const LandingPage = lazy(() => import('./pages/public/LandingPage').then(m => ({ default: m.LandingPage })));
@@ -40,108 +41,110 @@ export const App: React.FC = () => {
 
   return (
     <Router>
-      <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
+      <ToastProvider>
+        <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
 
-      <Suspense fallback={<PageLoader text="Loading interface module..." />}>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage onLoginSuccess={login} />} />
-          <Route path="/register" element={<RegisterPage onLoginSuccess={login} />} />
-          <Route path="/docs/api" element={<ApiDocsPage />} />
-          <Route path="/checkout/:sessionId" element={<HostedCheckout />} />
+        <Suspense fallback={<PageLoader text="Loading interface module..." />}>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage onLoginSuccess={login} />} />
+            <Route path="/register" element={<RegisterPage onLoginSuccess={login} />} />
+            <Route path="/docs/api" element={<ApiDocsPage />} />
+            <Route path="/checkout/:sessionId" element={<HostedCheckout />} />
 
-          {/* Dashboard Layout Routes */}
-          <Route
-            path="/dashboard/*"
-            element={
-              user ? (
-                <div className="flex min-h-screen bg-[#F8FAFC] text-slate-900 font-sans">
-                  <Sidebar
-                    role={user.role}
-                    onboardingStep={merchant?.onboarding_step}
-                    isOpen={isMobileSidebarOpen}
-                    onClose={() => setIsMobileSidebarOpen(false)}
-                  />
-                  <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-                    <Navbar
-                      user={user}
-                      merchant={merchant}
-                      onLogout={logout}
-                      onRefreshMerchant={refreshMerchant}
-                      onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-                      onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
+            {/* Dashboard Layout Routes */}
+            <Route
+              path="/dashboard/*"
+              element={
+                user ? (
+                  <div className="flex min-h-screen bg-[#F8FAFC] text-slate-900 font-sans">
+                    <Sidebar
+                      role={user.role}
+                      onboardingStep={merchant?.onboarding_step}
+                      isOpen={isMobileSidebarOpen}
+                      onClose={() => setIsMobileSidebarOpen(false)}
                     />
-                    <main className="flex-1">
-                      <Routes>
-                        <Route path="/" element={<DashboardOverview />} />
-                        <Route path="/overview" element={<DashboardOverview />} />
-                        <Route path="/payments" element={<PaymentsList />} />
-                        <Route path="/transactions" element={<TransactionsLedger />} />
-                        <Route path="/balances" element={<TransactionsLedger />} />
-                        <Route path="/customers" element={<CustomersView />} />
-                        <Route path="/invoices" element={<InvoicesList />} />
-                        <Route path="/payment-links" element={<PaymentLinksView />} />
-                        <Route path="/disputes" element={<DisputesList />} />
-                        <Route path="/subscriptions" element={<SubscriptionsView />} />
-                        <Route path="/payouts" element={<PayoutsView />} />
-                        <Route path="/refunds" element={<PaymentsList />} />
-                        <Route path="/checkout-sessions" element={<CheckoutSessionsView />} />
-                        <Route path="/api-keys" element={<APIKeysView />} />
-                        <Route path="/webhooks" element={<WebhooksView />} />
-                        <Route path="/simulator" element={<DeveloperSimulatorView />} />
-                        <Route
-                          path="/onboarding"
-                          element={<MerchantOnboardingView merchant={merchant} onRefresh={refreshMerchant} />}
-                        />
-                      </Routes>
-                    </main>
+                    <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+                      <Navbar
+                        user={user}
+                        merchant={merchant}
+                        onLogout={logout}
+                        onRefreshMerchant={refreshMerchant}
+                        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+                        onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
+                      />
+                      <main className="flex-1">
+                        <Routes>
+                          <Route path="/" element={<DashboardOverview />} />
+                          <Route path="/overview" element={<DashboardOverview />} />
+                          <Route path="/payments" element={<PaymentsList />} />
+                          <Route path="/transactions" element={<TransactionsLedger />} />
+                          <Route path="/balances" element={<TransactionsLedger />} />
+                          <Route path="/customers" element={<CustomersView />} />
+                          <Route path="/invoices" element={<InvoicesList />} />
+                          <Route path="/payment-links" element={<PaymentLinksView />} />
+                          <Route path="/disputes" element={<DisputesList />} />
+                          <Route path="/subscriptions" element={<SubscriptionsView />} />
+                          <Route path="/payouts" element={<PayoutsView />} />
+                          <Route path="/refunds" element={<PaymentsList />} />
+                          <Route path="/checkout-sessions" element={<CheckoutSessionsView />} />
+                          <Route path="/api-keys" element={<APIKeysView />} />
+                          <Route path="/webhooks" element={<WebhooksView />} />
+                          <Route path="/simulator" element={<DeveloperSimulatorView />} />
+                          <Route
+                            path="/onboarding"
+                            element={<MerchantOnboardingView merchant={merchant} onRefresh={refreshMerchant} />}
+                          />
+                        </Routes>
+                      </main>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
 
-          {/* Admin Layout Routes */}
-          <Route
-            path="/admin/*"
-            element={
-              user ? (
-                <div className="flex min-h-screen bg-[#F8FAFC] text-slate-900 font-sans">
-                  <Sidebar
-                    role="PLATFORM_ADMIN"
-                    isOpen={isMobileSidebarOpen}
-                    onClose={() => setIsMobileSidebarOpen(false)}
-                  />
-                  <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-                    <Navbar
-                      user={user}
-                      merchant={merchant}
-                      onLogout={logout}
-                      onRefreshMerchant={refreshMerchant}
-                      onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-                      onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
+            {/* Admin Layout Routes */}
+            <Route
+              path="/admin/*"
+              element={
+                user ? (
+                  <div className="flex min-h-screen bg-[#F8FAFC] text-slate-900 font-sans">
+                    <Sidebar
+                      role="PLATFORM_ADMIN"
+                      isOpen={isMobileSidebarOpen}
+                      onClose={() => setIsMobileSidebarOpen(false)}
                     />
-                    <main className="flex-1">
-                      <Routes>
-                        <Route path="/" element={<AdminDashboard />} />
-                        <Route path="/disputes" element={<DisputesList />} />
-                        <Route path="/payouts" element={<PayoutsView />} />
-                        <Route path="/audit-logs" element={<AdminDashboard />} />
-                        <Route path="/reconciliation" element={<AdminDashboard />} />
-                      </Routes>
-                    </main>
+                    <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+                      <Navbar
+                        user={user}
+                        merchant={merchant}
+                        onLogout={logout}
+                        onRefreshMerchant={refreshMerchant}
+                        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+                        onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
+                      />
+                      <main className="flex-1">
+                        <Routes>
+                          <Route path="/" element={<AdminDashboard />} />
+                          <Route path="/disputes" element={<DisputesList />} />
+                          <Route path="/payouts" element={<PayoutsView />} />
+                          <Route path="/audit-logs" element={<AdminDashboard />} />
+                          <Route path="/reconciliation" element={<AdminDashboard />} />
+                        </Routes>
+                      </main>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
-        </Routes>
-      </Suspense>
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+          </Routes>
+        </Suspense>
+      </ToastProvider>
     </Router>
   );
 };

@@ -21,9 +21,11 @@ import {
 import { PaycoreLogo } from '../../components/PaycoreLogo';
 import { Fintech3DHero } from '../../components/Fintech3DHero';
 import { StylishLandingNavbar } from '../../components/StylishLandingNavbar';
+import { useToast } from '../../context/ToastContext';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'collect' | 'payouts' | 'subs' | 'links'>('collect');
   const [codeLang, setCodeLang] = useState<'curl' | 'node' | 'python' | 'php' | 'go'>('curl');
   const [copiedCode, setCopiedCode] = useState(false);
@@ -99,6 +101,7 @@ func main() {
   const handleCopyCode = () => {
     navigator.clipboard.writeText(codeSnippets[codeLang]);
     setCopiedCode(true);
+    toast.copied(codeSnippets[codeLang], `${codeLang.toUpperCase()} SDK snippet copied to clipboard`);
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
@@ -292,8 +295,18 @@ func main() {
                 </div>
 
                 <button
-                  onClick={() => navigate('/register')}
-                  className="w-full py-3.5 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition cursor-pointer hover-lift"
+                  onClick={() => {
+                    toast.payment({
+                      title: 'Sandbox Payment Captured',
+                      message: 'Order order_tx_88921 confirmed with zero drop-off smart routing.',
+                      amount: 249900,
+                      currency: 'INR',
+                      status: 'SUCCESS',
+                      utr: 'UTR_' + Math.floor(100000 + Math.random() * 900000),
+                      method: 'UPI / Cards Instant Collect'
+                    });
+                  }}
+                  className="w-full py-3.5 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition cursor-pointer hover-lift active:scale-98"
                 >
                   <Lock className="w-3.5 h-3.5" />
                   <span>Test Instant Checkout in Sandbox</span>
@@ -329,10 +342,21 @@ func main() {
                 </div>
 
                 <button
-                  onClick={() => navigate('/register')}
-                  className="w-full py-3.5 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition cursor-pointer hover-lift"
+                  onClick={() => {
+                    toast.payment({
+                      title: 'Instant Payout Disbursed',
+                      message: '₹45,000.00 settled to Acme Global Ltd via IMPS bank rails in 1.2s.',
+                      amount: 4500000,
+                      currency: 'INR',
+                      status: 'SETTLED',
+                      utr: 'IMPS_908123476',
+                      method: '24x7 IMPS Bank Transfer'
+                    });
+                  }}
+                  className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition cursor-pointer hover-lift active:scale-98"
                 >
-                  <span>Try Payouts API in Sandbox</span>
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Execute Instant Disbursal in Sandbox</span>
                 </button>
               </div>
             )}
@@ -361,10 +385,17 @@ func main() {
                 </div>
 
                 <button
-                  onClick={() => navigate('/register')}
-                  className="w-full py-3.5 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition cursor-pointer hover-lift"
+                  onClick={() => {
+                    toast.success(
+                      'UPI AutoPay 2.0 Mandate Active',
+                      'Recurring mandate for ₹999.00/mo created with automated 24h pre-debit notifications.',
+                      'MANDATE_URN_998218'
+                    );
+                  }}
+                  className="w-full py-3.5 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition cursor-pointer hover-lift active:scale-98"
                 >
-                  <span>Create Recurring Plan</span>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Register Simulated E-Mandate</span>
                 </button>
               </div>
             )}
@@ -382,10 +413,16 @@ func main() {
                 </div>
 
                 <button
-                  onClick={() => navigate('/register')}
-                  className="w-full py-3.5 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition cursor-pointer hover-lift"
+                  onClick={() => {
+                    toast.copied(
+                      'https://paycore.dev/pay/plink_998124',
+                      'Shareable Payment Link Generated & Copied'
+                    );
+                  }}
+                  className="w-full py-3.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-amber-600/20 transition cursor-pointer hover-lift active:scale-98"
                 >
-                  <span>Create Free Payment Link</span>
+                  <LinkIcon className="w-3.5 h-3.5" />
+                  <span>Generate & Copy Payment Link</span>
                 </button>
               </div>
             )}
