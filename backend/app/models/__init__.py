@@ -11,7 +11,7 @@ from app.database import Base
 
 # Import all model entities so Base.metadata is fully populated
 from app.models.users import User, Session, UserRole
-from app.models.merchants import Merchant, MerchantMember, OnboardingStatus, MerchantMode
+from app.models.merchants import Merchant, MerchantMember, OnboardingStatus, MerchantMode, MerchantRole
 from app.models.customers import Customer, SavedPaymentMethod
 from app.models.payments import PaymentIntent, CheckoutSession, PaymentIntentStatus, PaymentMethodType, CheckoutSessionStatus
 from app.models.transactions import Transaction, TransactionType, TransactionStatus
@@ -20,13 +20,19 @@ from app.models.refunds_disputes import Refund, Dispute, RefundStatus, DisputeSt
 from app.models.api_keys import APIKey, APIKeyType, APIKeyMode
 from app.models.webhooks import WebhookEndpoint, WebhookEvent, WebhookDelivery, WebhookDeliveryStatus
 from app.models.invoices_notifications import Invoice, Notification, AuditLog, RiskEvent, Provider, IdempotencyKey
+from app.models.settlements_payouts import Settlement, SettlementBatch, SettlementStatus, Payout, PayoutBatch, PayoutStatus, PayoutMethod
+from app.models.subscriptions import SubscriptionPlan, Subscription, SubscriptionStatus, BillingInterval, MandateType
+from app.models.payment_links import PaymentLink, PaymentLinkStatus
+from app.models.events_outbox import EventOutbox, EventOutboxStatus
+from app.models.admins import PlatformAdmin
 
 __all__ = [
     "Base",
     "utc_now",
     "generate_id",
     "User", "Session", "UserRole",
-    "Merchant", "MerchantMember", "OnboardingStatus", "MerchantMode",
+    "PlatformAdmin",
+    "Merchant", "MerchantMember", "OnboardingStatus", "MerchantMode", "MerchantRole",
     "Customer", "SavedPaymentMethod",
     "PaymentIntent", "CheckoutSession", "PaymentIntentStatus", "PaymentMethodType", "CheckoutSessionStatus",
     "Transaction", "TransactionType", "TransactionStatus",
@@ -34,5 +40,10 @@ __all__ = [
     "Refund", "Dispute", "RefundStatus", "DisputeStatus",
     "APIKey", "APIKeyType", "APIKeyMode",
     "WebhookEndpoint", "WebhookEvent", "WebhookDelivery", "WebhookDeliveryStatus",
-    "Invoice", "Notification", "AuditLog", "RiskEvent", "Provider", "IdempotencyKey"
+    "Invoice", "Notification", "AuditLog", "RiskEvent", "Provider", "IdempotencyKey",
+    "Settlement", "SettlementBatch", "SettlementStatus",
+    "Payout", "PayoutBatch", "PayoutStatus", "PayoutMethod",
+    "SubscriptionPlan", "Subscription", "SubscriptionStatus", "BillingInterval", "MandateType",
+    "PaymentLink", "PaymentLinkStatus",
+    "EventOutbox", "EventOutboxStatus"
 ]

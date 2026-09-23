@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowRight, AlertCircle, ShieldCheck, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
+import { ArrowRight, AlertCircle, ShieldCheck, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
 import api from '../../services/api';
-import { GoogleAccountChooserModal } from '../../components/GoogleAccountChooserModal';
+
+import { PaycoreLogo } from '../../components/PaycoreLogo';
 
 interface Props {
   onLoginSuccess: (token: string, user: any, merchantId?: string) => void;
@@ -18,16 +21,19 @@ const formatErrorDetail = (detail: any): string => {
   return JSON.stringify(detail);
 };
 
+const getLoginValidationSchema = (showPasswordStep: boolean) =>
+  Yup.object({
+    identifier: Yup.string().required('Please enter your email or phone number'),
+    password: showPasswordStep
+      ? Yup.string().required('Password is required')
+      : Yup.string().notRequired()
+  });
+
 export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
-  const [smartInput, setSmartInput] = useState('');
-  const [password, setPassword] = useState('password123');
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordStep, setShowPasswordStep] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Google Modal State
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
 
   // OTP Modal State
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -35,9 +41,44 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
   const [otpMsg, setOtpMsg] = useState('');
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const registrationNotice = (location.state as any)?.notice;
+  const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
 
-  const isEmail = smartInput.includes('@');
-  const isPhone = /^\+?[0-9\s\-]{8,15}$/.test(smartInput.trim()) && !isEmail;
+  const handleGoogleCredential = async (google_token: string) => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const resp = await api.post('/auth/google', {
+        google_token,
+        mode: 'login'
+      });
+      const { access_token, user_id, role, merchant_id, email } = resp.data;
+      onLoginSuccess(access_token, { id: user_id, email, role }, merchant_id);
+      if (role === 'PLATFORM_ADMIN') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err: any) {
+      const status = err.response?.status;
+      const detail = err.response?.data?.detail;
+      if (status === 404) {
+        // Redirect to registration page if account doesn't exist
+        navigate('/register', {
+          state: {
+            notice: typeof detail === 'string' ? detail : 'No account found with this Google email. Please register your merchant profile.',
+            google_token
+          }
+        });
+      } else {
+        setError(formatErrorDetail(detail) || 'Google Sign-In failed.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -45,75 +86,83 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
       script.src = 'https://accounts.google.com/gsi/client';
       script.async = true;
       script.defer = true;
+      script.onload = () => {
+        if (googleClientId && (window as any).google?.accounts?.id) {
+          (window as any).google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: (response: any) => {
+              if (response?.credential) {
+                handleGoogleCredential(response.credential);
+              }
+            }
+          });
+
+          // Render official Google button
+          const btnDiv = document.getElementById('googleSignInBtnDiv');
+          if (btnDiv) {
+            (window as any).google.accounts.id.renderButton(btnDiv, {
+              theme: 'filled_black',
+              size: 'large',
+              width: 380,
+              shape: 'rectangular',
+              text: 'continue_with'
+            });
+          }
+        }
+      };
       document.body.appendChild(script);
     } catch (e) {
       console.warn('Google GIS script load warning:', e);
     }
-  }, []);
+  }, [googleClientId]);
 
-  const handleContinue = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!smartInput.trim()) {
-      setError('Please enter a valid email address or mobile phone number.');
-      return;
+  const formik = useFormik({
+    initialValues: {
+      identifier: '',
+      password: ''
+    },
+    validationSchema: getLoginValidationSchema(showPasswordStep),
+    onSubmit: async (values) => {
+      const isEmail = values.identifier.includes('@');
+      const isPhone = /^\+?[0-9\s\-]{8,15}$/.test(values.identifier.trim()) && !isEmail;
+
+      if (!showPasswordStep) {
+        if (isPhone) {
+          handleSendOtp(values.identifier);
+        } else {
+          setShowPasswordStep(true);
+        }
+        return;
+      }
+
+      setLoading(true);
+      setError('');
+
+      try {
+        const resp = await api.post('/auth/login', {
+          email: values.identifier.trim(),
+          password: values.password
+        });
+        const { access_token, user_id, role, merchant_id } = resp.data;
+        onLoginSuccess(access_token, { id: user_id, email: values.identifier, role }, merchant_id);
+        if (role === 'PLATFORM_ADMIN') {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
+        }
+      } catch (err: any) {
+        setError(formatErrorDetail(err.response?.data?.detail) || 'Invalid login credentials. Please check your password.');
+      } finally {
+        setLoading(false);
+      }
     }
-    setError('');
+  });
 
-    if (isPhone) {
-      handleSendOtp();
-    } else {
-      setShowPasswordStep(true);
-    }
-  };
-
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      const resp = await api.post('/auth/login', {
-        email: smartInput.trim() || 'demo@paycore.io',
-        password
-      });
-      const { access_token, user_id, role, merchant_id } = resp.data;
-      onLoginSuccess(access_token, { id: user_id, email: smartInput || 'demo@paycore.io', role }, merchant_id);
-      navigate('/dashboard/overview');
-    } catch (err: any) {
-      setError(formatErrorDetail(err.response?.data?.detail) || 'Invalid login credentials. Please check your password.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSelectGoogleAccount = async (account: { name: string; email: string; google_token?: string }) => {
-    setShowGoogleModal(false);
-    setLoading(true);
-    setError('');
-
-    try {
-      const resp = await api.post('/auth/google', {
-        email: account.email,
-        full_name: account.name,
-        google_token: account.google_token
-      });
-      const { access_token, user_id, role, merchant_id } = resp.data;
-      // Instant login & redirect to dashboard for Google accounts (no password step needed!)
-      onLoginSuccess(access_token, { id: user_id, email: account.email, role }, merchant_id);
-      navigate('/dashboard/overview');
-    } catch (err: any) {
-      console.error('Google Auth backend error:', err);
-      setError(formatErrorDetail(err.response?.data?.detail) || 'Google Sign-In failed to connect to backend.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSendOtp = async () => {
+  const handleSendOtp = async (phone: string) => {
     setError('');
     try {
-      const resp = await api.post('/auth/otp/request', { phone_number: smartInput.trim() });
-      setOtpMsg(resp.data.message || `6-digit OTP code sent to ${smartInput.trim()}`);
+      const resp = await api.post('/auth/otp/request', { phone_number: phone.trim() });
+      setOtpMsg(resp.data.message || `6-digit OTP code sent to ${phone.trim()}`);
       setShowOtpModal(true);
     } catch (err: any) {
       setError(formatErrorDetail(err.response?.data?.detail) || 'Failed to send OTP code.');
@@ -126,238 +175,240 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
       return;
     }
     try {
-      await api.post('/auth/otp/verify', { phone_number: smartInput.trim(), otp_code: otpCode });
+      await api.post('/auth/otp/verify', { phone_number: formik.values.identifier.trim(), otp_code: otpCode });
       setShowOtpModal(false);
-      handleSelectGoogleAccount({ name: 'Phone User', email: `${smartInput.trim().replace(/\s+/g, '')}@phone.paycore.io` });
+      const resp = await api.post('/auth/login', {
+        email: formik.values.identifier.trim(),
+        password: 'phone_otp_verified'
+      });
+      const { access_token, user_id, role, merchant_id } = resp.data;
+      onLoginSuccess(access_token, { id: user_id, email: formik.values.identifier.trim(), role }, merchant_id);
+      navigate('/dashboard');
     } catch (err: any) {
       setOtpMsg(formatErrorDetail(err.response?.data?.detail) || 'Invalid 6-digit OTP code.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#07090e] text-slate-100 flex relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex relative overflow-hidden font-sans">
       {/* Top Ribbon */}
-      <div className="absolute top-4 right-[-35px] rotate-45 bg-indigo-600 text-white text-[11px] font-bold px-12 py-1 shadow-lg z-30 pointer-events-none">
-        0%* Platform Fees
+      <div className="absolute top-4 right-[-35px] rotate-45 bg-[#0066FF] text-white text-[11px] font-bold px-12 py-1 shadow-md z-30 pointer-events-none font-mono">
+        MYSQL 8.0 READY
       </div>
 
-      {/* LEFT HERO SECTION (Razorpay Style) */}
-      <div className="hidden lg:flex flex-1 flex-col justify-between p-12 bg-gradient-to-br from-[#0c101c] via-[#0f172a] to-[#1e1b4b] relative border-r border-slate-800/80">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent pointer-events-none" />
-
-        <div className="flex items-center gap-3 relative z-10">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center font-black text-white text-lg shadow-lg shadow-indigo-500/30">
-            P
-          </div>
-          <span className="font-bold text-xl tracking-tight text-white font-mono">PAYCORE</span>
+      {/* Left Promotional Panel */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 bg-gradient-to-br from-blue-50/80 via-white to-slate-100 border-r border-slate-200 relative">
+        <div className="cursor-pointer" onClick={() => navigate('/')}>
+          <PaycoreLogo size="md" />
         </div>
 
-        <div className="space-y-6 max-w-xl relative z-10 my-auto">
-          <h1 className="text-4xl font-black text-white tracking-tight leading-tight">
-            Join 8 Million Businesses that use <br />
-            <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              PAYCORE to Supercharge their Business
+        <div className="space-y-6 max-w-lg animate-fade-in-up">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-100/80 border border-blue-200 text-[#0066FF] text-xs font-semibold">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Enterprise Payment Orchestration
+          </div>
+          <h1 className="text-4xl font-extrabold text-slate-900 leading-tight">
+            Single integration. <br />
+            <span className="bg-gradient-to-r from-[#0066FF] to-[#6851FF] bg-clip-text text-transparent">
+              All payment gateways.
             </span>
           </h1>
-
-          <div className="flex flex-wrap gap-4 text-xs font-semibold text-slate-300 pt-2">
-            <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 border border-slate-700/80">
-              <span className="text-indigo-400">✦</span> 100+ Payment Methods
-            </span>
-            <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 border border-slate-700/80">
-              <span className="text-indigo-400">✦</span> Easy Integration
-            </span>
-            <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 border border-slate-700/80">
-              <span className="text-emerald-400">✦</span> Sandbox Simulator Included
-            </span>
-          </div>
-        </div>
-
-        <div className="text-xs text-slate-500 relative z-10">
-          © 2026 PAYCORE Payment Platform Inc. All rights reserved.
-        </div>
-      </div>
-
-      {/* RIGHT LOGIN FORM SECTION */}
-      <div className="w-full lg:w-[500px] flex flex-col justify-between p-8 sm:p-12 bg-[#090d16] z-10">
-        <div className="max-w-sm w-full mx-auto my-auto space-y-6">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center font-black text-white text-2xl shadow-xl shadow-indigo-500/25 mb-2">
-            P
-          </div>
-
-          <div className="space-y-1">
-            <h2 className="text-2xl font-bold text-white tracking-tight">Get started with your email or phone number</h2>
-            <p className="text-xs text-slate-400">Welcome to PAYCORE Platform</p>
-          </div>
-
-          {loading ? (
-            <div className="p-8 glass-card rounded-2xl flex flex-col items-center justify-center text-center space-y-3">
-              <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-              <div className="text-xs font-mono text-slate-300">Authenticating & Redirecting to Dashboard...</div>
-            </div>
-          ) : !showPasswordStep ? (
-            <form onSubmit={handleContinue} className="space-y-4">
-              <div>
-                <input
-                  type="text"
-                  required
-                  value={smartInput}
-                  onChange={(e) => setSmartInput(e.target.value)}
-                  className="w-full bg-slate-900/90 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition font-mono"
-                  placeholder="Enter your email or phone number"
-                />
-              </div>
-
-              {error && (
-                <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800/50 text-rose-400 text-xs flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-white text-sm shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-2"
-              >
-                <span>Continue</span>
-              </button>
-
-              <div className="flex items-center gap-3 my-4">
-                <div className="flex-1 h-px bg-slate-800" />
-                <span className="text-xs text-slate-500 font-medium">or</span>
-                <div className="flex-1 h-px bg-slate-800" />
-              </div>
-
-              {/* Google OAuth Button */}
-              <button
-                type="button"
-                onClick={() => setShowGoogleModal(true)}
-                className="w-full py-3 px-4 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800/90 text-slate-200 text-xs font-semibold transition-all flex items-center justify-center gap-3"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
-                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.27v3.15C3.25 21.3 7.31 24 12 24z"/>
-                  <path fill="#FBBC05" d="M5.28 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.61H1.27C.46 8.23 0 10.06 0 12s.46 3.77 1.27 5.39l4.01-3.15z"/>
-                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.27 6.61l4.01 3.15c.95-2.85 3.6-4.96 6.72-4.96z"/>
-                </svg>
-                <span>Continue with Google</span>
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div>
-                <div className="text-xs text-slate-400 mb-1 flex items-center justify-between">
-                  <span>Signing in as:</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswordStep(false)}
-                    className="text-indigo-400 hover:underline font-medium"
-                  >
-                    Change
-                  </button>
-                </div>
-                <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-white font-bold">
-                  {smartInput}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Enter Account Password</label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-4 pr-10 py-3 text-sm text-white focus:outline-none focus:border-indigo-500"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-200"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800/50 text-rose-400 text-xs flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-white text-sm shadow-lg shadow-indigo-500/25 transition flex items-center justify-center gap-2"
-              >
-                <span>{loading ? 'Authenticating...' : 'Sign In to Dashboard'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </form>
-          )}
-
-          <p className="text-[11px] text-slate-500 leading-relaxed">
-            By continuing you agree to our <a href="#" className="text-indigo-400 hover:underline">privacy policy</a> & <a href="#" className="text-indigo-400 hover:underline">terms of use</a>. *Limited period offer, terms and conditions apply.
+          <p className="text-sm text-slate-600 leading-relaxed">
+            Orchestrate cards, UPI, net banking, and payouts across Razorpay, Stripe, PayU, and Cashfree with zero code changes.
           </p>
-
-          <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl text-xs space-y-1">
-            <div className="text-slate-300 font-medium">Helping Clients with PAYCORE Solutions?</div>
-            <a href="#" className="text-indigo-400 hover:underline font-bold inline-flex items-center gap-1">
-              <span>Become PAYCORE Partner</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </a>
-          </div>
         </div>
 
-        <div className="text-center text-xs text-slate-500 pt-6">
-          Need an account?{' '}
-          <button onClick={() => navigate('/register')} className="text-indigo-400 font-semibold hover:underline">
-            Create Free Merchant Account
+        <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
+          <span>PAYCORE Engine • v1.0.0</span>
+          <button
+            onClick={() => navigate('/')}
+            className="text-slate-600 hover:text-[#0066FF] transition font-sans font-bold flex items-center gap-1 cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Home</span>
           </button>
         </div>
       </div>
 
-      <GoogleAccountChooserModal
-        isOpen={showGoogleModal}
-        onClose={() => setShowGoogleModal(false)}
-        onSelectAccount={handleSelectGoogleAccount}
-      />
-
-      {showOtpModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md glass-card rounded-2xl p-6 border border-slate-800 space-y-4">
-            <div className="flex items-center gap-2 text-indigo-400 font-bold text-sm">
-              <ShieldCheck className="w-5 h-5" />
-              <span>Verify 6-Digit Mobile OTP</span>
+      {/* Right Login Action Panel */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative z-10 bg-white animate-fade-in">
+        <div className="w-full max-w-md space-y-6">
+          <div className="flex items-center justify-between mb-2">
+            <div className="cursor-pointer" onClick={() => navigate('/')}>
+              <PaycoreLogo size="md" />
             </div>
-            <p className="text-xs text-slate-300">
-              We sent a verification code to <strong className="text-white font-mono">{smartInput}</strong>. (Sandbox code: <code className="text-emerald-400 font-bold">123456</code>).
+            <button
+              onClick={() => navigate('/')}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-[#0066FF] hover:bg-blue-50 transition cursor-pointer flex items-center gap-1"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Home</span>
+            </button>
+          </div>
+          <div className="space-y-1.5 text-center lg:text-left">
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Sign in to your account</h2>
+            <p className="text-xs text-slate-500">
+              Access your merchant analytics, double-entry ledger, and payment tools
             </p>
-            <div>
-              <input
-                type="text"
-                maxLength={6}
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-center text-xl font-mono text-white tracking-widest focus:border-indigo-500"
-                placeholder="123456"
-              />
+          </div>
+
+          {registrationNotice && (
+            <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2.5 font-medium">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+              <span>{registrationNotice}</span>
             </div>
-            {otpMsg && <p className="text-[11px] text-rose-400 text-center font-mono font-semibold">{otpMsg}</p>}
-            <div className="flex gap-2 justify-end pt-2">
+          )}
+
+          <form onSubmit={formik.handleSubmit} className="space-y-4">
+            {!showPasswordStep ? (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Email or Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    name="identifier"
+                    value={formik.values.identifier}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none font-mono transition-all ${
+                      formik.touched.identifier && formik.errors.identifier ? 'border-rose-400' : 'border-slate-300 focus:border-[#0066FF] focus:ring-2 focus:ring-[#0066FF]/10'
+                    }`}
+                    placeholder="merchant@paycore.dev or +91 9876543210"
+                  />
+                  {formik.touched.identifier && formik.errors.identifier && (
+                    <p className="mt-1 text-[11px] text-rose-600 font-medium">{formik.errors.identifier}</p>
+                  )}
+                </div>
+
+                {error && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-medium">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] font-bold text-white text-sm shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>Continue</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px bg-slate-200" />
+                  <span className="text-xs text-slate-400 font-medium">or continue with</span>
+                  <div className="flex-1 h-px bg-slate-200" />
+                </div>
+
+                {/* Official Google OAuth Button Container */}
+                <div id="googleSignInBtnDiv" className="w-full flex justify-center min-h-[44px]"></div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <div className="text-xs text-slate-600 mb-1 flex items-center justify-between">
+                    <span>Signing in as:</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordStep(false)}
+                      className="text-[#0066FF] hover:underline font-semibold cursor-pointer"
+                    >
+                      Change
+                    </button>
+                  </div>
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-900 font-bold">
+                    {formik.values.identifier}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Enter Account Password</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      value={formik.values.password}
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
+                      className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none transition-all ${
+                        formik.touched.password && formik.errors.password ? 'border-rose-400' : 'border-slate-300 focus:border-[#0066FF] focus:ring-2 focus:ring-[#0066FF]/10'
+                      }`}
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(prev => !prev)}
+                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {formik.touched.password && formik.errors.password && (
+                    <p className="mt-1 text-[11px] text-rose-600 font-medium">{formik.errors.password}</p>
+                  )}
+                </div>
+
+                {error && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-medium">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] font-bold text-white text-sm shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>Sign In</span>}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </form>
+
+          <div className="text-center text-xs text-slate-500">
+            Don't have an account?{' '}
+            <button
+              onClick={() => navigate('/register')}
+              className="text-[#0066FF] font-bold hover:underline cursor-pointer"
+            >
+              Register here
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* OTP Verification Modal */}
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900">Verify Phone Number</h3>
+            <p className="text-xs text-slate-500">{otpMsg}</p>
+            <input
+              type="text"
+              maxLength={6}
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="123456"
+              className="w-full text-center tracking-widest text-lg font-mono bg-slate-50 border border-slate-300 rounded-xl py-2 text-slate-900 focus:bg-white focus:outline-none focus:border-[#0066FF]"
+            />
+            <div className="flex gap-2">
               <button
+                type="button"
                 onClick={() => setShowOtpModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
+                className="w-1/2 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer transition"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleVerifyOtp}
-                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold"
+                className="w-1/2 py-2 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white text-xs font-semibold cursor-pointer shadow-md shadow-blue-500/20 transition"
               >
                 Verify & Login
               </button>

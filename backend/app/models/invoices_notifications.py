@@ -14,16 +14,34 @@ class Invoice(Base):
     invoice_number: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     order_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     
+    # Customer Details Snapshot
+    customer_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    customer_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    customer_gstin: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    customer_address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # Financial breakdown (in minor units / paise)
     subtotal: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    cgst_amount: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
+    sgst_amount: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
+    igst_amount: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     tax_amount: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     discount_amount: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     total_amount: Mapped[int] = mapped_column(BigInteger, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="INR", nullable=False)
     
-    status: Mapped[str] = mapped_column(String(50), default="PAID", nullable=False)
+    # Line items: list of {description, quantity, unit_price, tax_rate, amount}
+    line_items: Mapped[dict] = mapped_column(JSON, default=list, nullable=False)
+    
+    status: Mapped[str] = mapped_column(String(50), default="PAID", nullable=False, index=True)  # DRAFT, ISSUED, PAID, VOID, CANCELLED
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    terms: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    due_date: Mapped[Optional[DateTime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    paid_at: Mapped[Optional[DateTime]] = mapped_column(DateTime(timezone=True), nullable=True)
     pdf_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
 
 class Notification(Base):
     __tablename__ = "notifications"
@@ -73,7 +91,7 @@ class Provider(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: generate_id("pvd"))
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)  # sandbox, stripe, razorpay
+    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)  # sandbox, stripe, razorpay, payu, cashfree
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     config_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     

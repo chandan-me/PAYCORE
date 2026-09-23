@@ -50,6 +50,7 @@ class GoogleLoginRequest(BaseModel):
     google_token: Optional[str] = None
     email: Optional[str] = None
     full_name: Optional[str] = None
+    mode: Optional[str] = "login"  # "login" or "register"
 
 class OTPRequest(BaseModel):
     phone_number: str

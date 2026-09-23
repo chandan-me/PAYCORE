@@ -1,28 +1,35 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: paycore_postgres
+  mysql:
+    image: mysql:8.0
+    container_name: paycore_mysql
     environment:
-      POSTGRES_DB: paycore
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password123
+      MYSQL_DATABASE: paycore
+      MYSQL_USER: paycore_user
+      MYSQL_PASSWORD: password123
+      MYSQL_ROOT_PASSWORD: rootpassword123
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword123"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   redis:
     image: redis:7-alpine
     container_name: paycore_redis
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
@@ -30,8 +37,15 @@ services:
       dockerfile: Dockerfile
     container_name: paycore_backend
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:password123@postgres:5432/paycore
+      DATABASE_URL: mysql+aiomysql://paycore_user:password123@mysql:3306/paycore
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: paycore
+      MYSQL_USER: paycore_user
+      MYSQL_PASSWORD: password123
       REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
       JWT_SECRET_KEY: paycore_super_secret_jwt_key_2026_change_in_production
       FRONTEND_URL: http://localhost:5173
       API_URL: http://localhost:8000
@@ -39,10 +53,28 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: paycore_celery_worker
+    command: celery -A app.workers.celery_app.celery_app worker --loglevel=info
+    environment:
+      DATABASE_URL: mysql+aiomysql://paycore_user:password123@mysql:3306/paycore
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      JWT_SECRET_KEY: paycore_super_secret_jwt_key_2026_change_in_production
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   frontend:
     build:
@@ -55,4 +87,4 @@ services:
       - backend
 
 volumes:
-  postgres_data:
+  mysql_data:

@@ -5,8 +5,6 @@ import {
   CreditCard,
   Receipt,
   Users,
-  Wallet,
-  RotateCcw,
   AlertTriangle,
   FileText,
   Key,
@@ -14,92 +12,163 @@ import {
   Terminal,
   ShieldCheck,
   Building2,
-  Sparkles
+  Sparkles,
+  Link as LinkIcon,
+  RefreshCw,
+  ArrowUpRight,
+  Scale,
+  X
 } from 'lucide-react';
+import { PaycoreLogo } from './PaycoreLogo';
 
 interface SidebarProps {
   role?: string;
   onboardingStep?: number;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ role = 'MERCHANT_ADMIN' }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ role = 'MERCHANT_ADMIN', isOpen = false, onClose }) => {
   const isAdmin = role === 'PLATFORM_ADMIN';
 
-  const merchantLinks = [
-    { to: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-    { to: '/dashboard/payments', label: 'Payments', icon: CreditCard },
-    { to: '/dashboard/transactions', label: 'Transactions & Ledger', icon: Receipt },
-    { to: '/dashboard/customers', label: 'Customers', icon: Users },
-    { to: '/dashboard/balances', label: 'Balances', icon: Wallet },
-    { to: '/dashboard/refunds', label: 'Refunds', icon: RotateCcw },
-    { to: '/dashboard/disputes', label: 'Disputes', icon: AlertTriangle },
-    { to: '/dashboard/invoices', label: 'Invoices', icon: FileText },
-    { to: '/dashboard/checkout-sessions', label: 'Hosted Checkout', icon: Sparkles },
-    { to: '/dashboard/api-keys', label: 'API Keys', icon: Key },
-    { to: '/dashboard/webhooks', label: 'Webhooks', icon: Webhook },
-    { to: '/dashboard/simulator', label: 'Developer Simulator', icon: Terminal },
-    { to: '/dashboard/onboarding', label: 'Onboarding Wizard', icon: Building2 },
+  const merchantGroups = [
+    {
+      title: 'COLLECT PAYMENTS',
+      links: [
+        { to: '/dashboard', label: 'Overview', icon: LayoutDashboard },
+        { to: '/dashboard/payments', label: 'Payment Gateway', icon: CreditCard },
+        { to: '/dashboard/payment-links', label: 'Payment Links', icon: LinkIcon },
+        { to: '/dashboard/invoices', label: 'GST Invoices', icon: FileText },
+        { to: '/dashboard/checkout-sessions', label: 'Checkout Sessions', icon: Sparkles },
+        { to: '/dashboard/customers', label: 'Customer Vault', icon: Users },
+      ]
+    },
+    {
+      title: 'DISBURSEMENTS & LEDGER',
+      links: [
+        { to: '/dashboard/payouts', label: 'Instant Payouts', icon: ArrowUpRight },
+        { to: '/dashboard/transactions', label: 'Double-Entry Ledger', icon: Receipt },
+      ]
+    },
+    {
+      title: 'RECURRING & AUTOPAY',
+      links: [
+        { to: '/dashboard/subscriptions', label: 'UPI AutoPay Plans', icon: RefreshCw },
+      ]
+    },
+    {
+      title: 'RISK & COMPLIANCE',
+      links: [
+        { to: '/dashboard/disputes', label: 'Disputes & Shield', icon: AlertTriangle },
+        { to: '/dashboard/onboarding', label: 'KYC & Onboarding', icon: Building2 },
+      ]
+    },
+    {
+      title: 'DEVELOPER SUITE',
+      links: [
+        { to: '/dashboard/api-keys', label: 'API Keys', icon: Key },
+        { to: '/dashboard/webhooks', label: 'Webhooks & HMAC', icon: Webhook },
+        { to: '/dashboard/simulator', label: 'Sandbox Simulator', icon: Terminal },
+      ]
+    }
   ];
 
-  const adminLinks = [
-    { to: '/admin', label: 'Platform Overview', icon: LayoutDashboard },
-    { to: '/admin/audit-logs', label: 'Audit Logs', icon: ShieldCheck },
-    { to: '/admin/reconciliation', label: 'Reconciliation', icon: Receipt },
+  const adminGroups = [
+    {
+      title: 'PLATFORM OPERATIONS',
+      links: [
+        { to: '/admin', label: 'Platform Overview', icon: LayoutDashboard },
+        { to: '/admin/disputes', label: 'Disputes Oversight', icon: AlertTriangle },
+        { to: '/admin/payouts', label: 'Disbursals Queue', icon: ArrowUpRight },
+      ]
+    },
+    {
+      title: 'FINANCIAL INTEGRITY',
+      links: [
+        { to: '/admin/audit-logs', label: 'Append-Only Logs', icon: ShieldCheck },
+        { to: '/admin/reconciliation', label: 'Ledger Reconciliation', icon: Scale },
+      ]
+    }
   ];
 
-  const links = isAdmin ? adminLinks : merchantLinks;
+  const groups = isAdmin ? adminGroups : merchantGroups;
 
   return (
-    <aside className="w-64 bg-slate-900/90 border-r border-slate-800 flex flex-col h-screen sticky top-0">
-      <div className="h-16 flex items-center px-6 border-b border-slate-800 gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center font-black text-white text-lg shadow-lg shadow-indigo-500/30">
-          P
-        </div>
-        <div>
-          <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">
-            PAYCORE
-          </span>
-          <span className="text-[10px] block font-mono text-indigo-400 -mt-1 font-semibold uppercase tracking-wider">
-            {isAdmin ? 'PLATFORM ADMIN' : 'ORCHESTRATION'}
-          </span>
-        </div>
-      </div>
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {isOpen && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 lg:hidden transition-opacity"
+        />
+      )}
 
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <div className="px-3 pb-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-          {isAdmin ? 'Platform Management' : 'Merchant Dashboard'}
-        </div>
-        {links.map((link) => {
-          const Icon = link.icon;
-          return (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.to === '/dashboard' || link.to === '/admin'}
-              className={({ isActive }: { isActive: boolean }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-                }`
-              }
+      {/* Sidebar Navigation */}
+      <aside
+        className={`fixed lg:sticky top-0 left-0 z-50 lg:z-30 w-64 bg-white border-r border-slate-200 flex flex-col h-screen select-none shadow-sm transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
+        {/* Brand Header */}
+        <div className="h-16 flex items-center justify-between px-5 border-b border-slate-200 bg-white">
+          <PaycoreLogo size="sm" subtitle={isAdmin ? 'ADMIN CONSOLE' : 'MERCHANT CONSOLE'} />
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
             >
-              <Icon className="w-4 h-4 opacity-80" />
-              <span>{link.label}</span>
-            </NavLink>
-          );
-        })}
-      </nav>
-
-      <div className="p-4 border-t border-slate-800/80 bg-slate-950/40">
-        <div className="flex items-center justify-between text-xs text-slate-400">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="font-mono text-[11px] font-semibold">SANDBOX PROVIDER</span>
-          </div>
-          <span className="text-[10px] text-slate-500 font-mono">v1.0.0</span>
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
-      </div>
-    </aside>
+
+        {/* Navigation Groups */}
+        <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
+          {groups.map((grp) => (
+            <div key={grp.title} className="space-y-1">
+              <div className="px-3 pb-1 text-[10px] font-bold text-slate-400 tracking-wider uppercase font-mono">
+                {grp.title}
+              </div>
+              {grp.links.map((link) => {
+                const Icon = link.icon;
+                return (
+                  <NavLink
+                    key={link.to}
+                    to={link.to}
+                    end={link.to === '/dashboard' || link.to === '/admin'}
+                    onClick={() => onClose && onClose()}
+                    className={({ isActive }: { isActive: boolean }) =>
+                      `flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                        isActive
+                          ? 'bg-[#0066FF] text-white shadow-md shadow-blue-600/20 font-bold'
+                          : 'text-slate-600 hover:text-[#0066FF] hover:bg-slate-50'
+                      }`
+                    }
+                  >
+                    <Icon className="w-4 h-4 shrink-0 opacity-90" />
+                    <span className="truncate">{link.label}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+
+        {/* Footer System Status */}
+        <div className="p-3.5 border-t border-slate-200 bg-slate-50/80">
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="font-mono text-[10px] font-bold text-slate-700">API Banking Live</span>
+            </div>
+            <span className="text-[10px] text-[#0066FF] font-mono font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+              MYSQL 8.0
+            </span>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 };
+
+

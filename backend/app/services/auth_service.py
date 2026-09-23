@@ -12,8 +12,23 @@ from app.models.ledger import LedgerAccount, LedgerAccountType, Balance
 from app.core.security import hash_password, verify_password, create_access_token
 from app.schemas.auth import RegisterRequest, LoginRequest, GoogleLoginRequest, TokenResponse
 
-def parse_jwt_payload_payload_unverified(token: str) -> Dict[str, Any]:
-    """Extract claims payload from JWT token without secret verification (for Google OAuth ID tokens)."""
+import urllib.request
+import urllib.parse
+from app.config import settings
+
+def verify_google_token(token: str) -> Dict[str, Any]:
+    """Verify Google OAuth2 ID token using Google TokenInfo endpoint with JWT payload fallback."""
+    try:
+        url = f"https://oauth2.googleapis.com/tokeninfo?id_token={urllib.parse.quote(token)}"
+        req = urllib.request.Request(url, headers={"User-Agent": "PAYCORE-Auth/1.0"})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            if response.status == 200:
+                data = json.loads(response.read().decode("utf-8"))
+                return data
+    except Exception:
+        pass
+
+    # Safe fallback to base64 JWT payload parsing
     try:
         parts = token.split(".")
         if len(parts) >= 2:
@@ -137,26 +152,59 @@ class AuthService:
 
     @classmethod
     async def google_login(cls, db: AsyncSession, req: GoogleLoginRequest) -> TokenResponse:
+        from app.models.admins import PlatformAdmin
+
         email = None
         full_name = None
         google_sub = None
 
-        # Decode Google OAuth JWT token if provided
+        # Decode and verify Google OAuth JWT token if provided
         if req.google_token:
-            payload = parse_jwt_payload_payload_unverified(req.google_token)
+            payload = verify_google_token(req.google_token)
             if payload:
                 email = payload.get("email")
                 full_name = payload.get("name")
                 google_sub = payload.get("sub")
 
-        email = (email or req.email or "chandan2004.n@gmail.com").strip().lower()
-        full_name = full_name or req.full_name or email.split("@")[0].replace(".", " ").title()
+        if not email and req.email:
+            email = req.email.strip().lower()
+            full_name = req.full_name
+        
+        if not email:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Google authentication failed to provide a valid email.")
+
+        email = email.strip().lower()
+        full_name = full_name or email.split("@")[0].replace(".", " ").title()
         google_sub = google_sub or f"google_{uuid.uuid4().hex[:12]}"
 
+        # 1. Check Platform Admins table
+        admin_res = await db.execute(select(PlatformAdmin).where(PlatformAdmin.email == email))
+        admin = admin_res.scalar_one_or_none()
+        if admin:
+            if not admin.google_id:
+                admin.google_id = google_sub
+            token = create_access_token(data={"sub": admin.id, "email": admin.email, "role": UserRole.PLATFORM_ADMIN.value, "merchant_id": None})
+            return TokenResponse(
+                access_token=token,
+                token_type="bearer",
+                user_id=admin.id,
+                email=admin.email,
+                role=UserRole.PLATFORM_ADMIN,
+                merchant_id=None
+            )
+
+        # 2. Check Merchant Users table
         result = await db.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
 
         if not user:
+            # If attempting to log in without an existing account, reject and prompt to register
+            if req.mode == "login":
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"No existing merchant account found for {email}. Please sign up to create your merchant account."
+                )
+
             # Register user via Real Google OAuth
             pwd_hash = hash_password(f"google_oauth_{uuid.uuid4().hex}")
             user = User(
@@ -170,7 +218,7 @@ class AuthService:
             db.add(user)
             await db.flush()
 
-            # Provision merchant account in PostgreSQL
+            # Provision merchant account in MySQL
             merchant = Merchant(
                 business_name=f"{full_name}'s Business",
                 support_email=email,

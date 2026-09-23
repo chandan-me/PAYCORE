@@ -1,16 +1,27 @@
 import React, { useState, useEffect } from 'react';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
 import { Plus, Copy, Check, ShieldAlert } from 'lucide-react';
 import api from '../../services/api';
 import { StatusBadge } from '../../components/StatusBadge';
 
+const apiKeyValidationSchema = Yup.object({
+  name: Yup.string()
+    .trim()
+    .required('Key name / description is required')
+    .min(3, 'Name must be at least 3 characters'),
+  keyType: Yup.string()
+    .oneOf(['SECRET', 'PUBLISHABLE'], 'Invalid key type')
+    .required('Key type is required')
+});
+
 export const APIKeysView: React.FC = () => {
   const [keys, setKeys] = useState<any[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [keyName, setKeyName] = useState('Backend Service Key');
-  const [keyType, setKeyType] = useState<'SECRET' | 'PUBLISHABLE'>('SECRET');
-  
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const fetchKeys = async () => {
     try {
@@ -25,20 +36,33 @@ export const APIKeysView: React.FC = () => {
     fetchKeys();
   }, []);
 
-  const handleCreateKey = async () => {
-    try {
-      const resp = await api.post('/api_keys', {
-        name: keyName,
-        key_type: keyType,
-        mode: 'TEST'
-      });
-      setRevealedSecret(resp.data.secret_key);
-      setShowCreateModal(false);
-      fetchKeys();
-    } catch (err) {
-      console.error(err);
+  const formik = useFormik({
+    initialValues: {
+      name: 'Backend Service Key',
+      keyType: 'SECRET' as 'SECRET' | 'PUBLISHABLE'
+    },
+    validationSchema: apiKeyValidationSchema,
+    onSubmit: async (values, { resetForm }) => {
+      setCreateError(null);
+      setLoading(true);
+      try {
+        const resp = await api.post('/api_keys', {
+          name: values.name.trim(),
+          key_type: values.keyType,
+          mode: 'TEST'
+        });
+        setRevealedSecret(resp.data.secret_key);
+        setShowCreateModal(false);
+        resetForm();
+        fetchKeys();
+      } catch (err: any) {
+        console.error(err);
+        setCreateError(err.response?.data?.detail || 'Failed to create API key.');
+      } finally {
+        setLoading(false);
+      }
     }
-  };
+  });
 
   const handleRevokeKey = async (id: string) => {
     try {
@@ -152,42 +176,63 @@ export const APIKeysView: React.FC = () => {
           <div className="w-full max-w-md glass-card rounded-2xl p-6 border border-slate-800 space-y-4">
             <h3 className="text-base font-bold text-white">Create New API Key</h3>
             
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Key Description / Name</label>
-              <input
-                type="text"
-                value={keyName}
-                onChange={(e) => setKeyName(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
-              />
-            </div>
+            {createError && (
+              <div className="p-3 bg-red-950/50 border border-red-500/30 rounded-lg text-xs text-red-400">
+                {createError}
+              </div>
+            )}
 
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Key Type</label>
-              <select
-                value={keyType}
-                onChange={(e: any) => setKeyType(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
-              >
-                <option value="SECRET">Secret Key (sk_test_...)</option>
-                <option value="PUBLISHABLE">Publishable Key (pk_test_...)</option>
-              </select>
-            </div>
+            <form onSubmit={formik.handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Key Description / Name *</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formik.values.name}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  className={`w-full bg-slate-900 border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 ${
+                    formik.touched.name && formik.errors.name
+                      ? 'border-rose-500 focus:ring-rose-500'
+                      : 'border-slate-800 focus:ring-indigo-500'
+                  }`}
+                />
+                {formik.touched.name && formik.errors.name && (
+                  <p className="mt-1 text-[11px] text-rose-400">{formik.errors.name}</p>
+                )}
+              </div>
 
-            <div className="flex gap-2 justify-end pt-2">
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateKey}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium"
-              >
-                Generate Key
-              </button>
-            </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Key Type</label>
+                <select
+                  name="keyType"
+                  value={formik.values.keyType}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value="SECRET">Secret Key (sk_test_...)</option>
+                  <option value="PUBLISHABLE">Publishable Key (pk_test_...)</option>
+                </select>
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium cursor-pointer transition"
+                >
+                  {loading ? 'Generating...' : 'Generate Key'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

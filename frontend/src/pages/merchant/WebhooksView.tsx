@@ -1,13 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
 import { Plus, RefreshCw, ShieldCheck, Play } from 'lucide-react';
 import api from '../../services/api';
 import { StatusBadge } from '../../components/StatusBadge';
 
+const webhookEndpointValidationSchema = Yup.object({
+  url: Yup.string()
+    .trim()
+    .required('Payload URL is required')
+    .url('Please enter a valid HTTP or HTTPS webhook URL')
+    .matches(/^https?:\/\//, 'URL must start with http:// or https://')
+});
+
 export const WebhooksView: React.FC = () => {
   const [endpoints, setEndpoints] = useState<any[]>([]);
   const [deliveries, setDeliveries] = useState<any[]>([]);
-  const [urlInput, setUrlInput] = useState('https://example.com/api/paycore-webhook');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [endpointError, setEndpointError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -26,18 +37,30 @@ export const WebhooksView: React.FC = () => {
     fetchData();
   }, []);
 
-  const handleCreateEndpoint = async () => {
-    try {
-      await api.post('/webhooks/endpoints', {
-        url: urlInput,
-        subscribed_events: ['payment.succeeded', 'payment.failed', 'refund.succeeded', 'dispute.created']
-      });
-      setShowAddModal(false);
-      fetchData();
-    } catch (err) {
-      console.error(err);
+  const formik = useFormik({
+    initialValues: {
+      url: 'https://example.com/api/paycore-webhook'
+    },
+    validationSchema: webhookEndpointValidationSchema,
+    onSubmit: async (values, { resetForm }) => {
+      setEndpointError(null);
+      setSubmitting(true);
+      try {
+        await api.post('/webhooks/endpoints', {
+          url: values.url.trim(),
+          subscribed_events: ['payment.succeeded', 'payment.failed', 'refund.succeeded', 'dispute.created']
+        });
+        setShowAddModal(false);
+        resetForm();
+        fetchData();
+      } catch (err: any) {
+        console.error(err);
+        setEndpointError(err.response?.data?.detail || 'Failed to save webhook endpoint.');
+      } finally {
+        setSubmitting(false);
+      }
     }
-  };
+  });
 
   const handleRetryDelivery = async (id: string) => {
     try {
@@ -168,29 +191,50 @@ export const WebhooksView: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md glass-card rounded-2xl p-6 border border-slate-800 space-y-4">
             <h3 className="text-base font-bold text-white">Configure Webhook Endpoint</h3>
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Payload URL</label>
-              <input
-                type="url"
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
-              />
-            </div>
-            <div className="flex gap-2 justify-end pt-2">
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateEndpoint}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium"
-              >
-                Save Endpoint
-              </button>
-            </div>
+            
+            {endpointError && (
+              <div className="p-3 bg-red-950/50 border border-red-500/30 rounded-lg text-xs text-red-400">
+                {endpointError}
+              </div>
+            )}
+
+            <form onSubmit={formik.handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Payload URL *</label>
+                <input
+                  type="url"
+                  name="url"
+                  value={formik.values.url}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  className={`w-full bg-slate-900 border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 ${
+                    formik.touched.url && formik.errors.url
+                      ? 'border-rose-500 focus:ring-rose-500'
+                      : 'border-slate-800 focus:ring-indigo-500'
+                  }`}
+                  placeholder="https://example.com/api/paycore-webhook"
+                />
+                {formik.touched.url && formik.errors.url && (
+                  <p className="mt-1 text-[11px] text-rose-400">{formik.errors.url}</p>
+                )}
+              </div>
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium cursor-pointer transition"
+                >
+                  {submitting ? 'Saving...' : 'Save Endpoint'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

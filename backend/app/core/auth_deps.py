@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.core.security import decode_access_token, hash_api_key
 from app.models.users import User, UserRole
-from app.models.merchants import Merchant
+from app.models.merchants import Merchant, MerchantMember
 from app.models.api_keys import APIKey
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/auth/login", auto_error=False)
@@ -39,7 +39,11 @@ async def get_current_merchant(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> Merchant:
-    result = await db.execute(select(Merchant).where(Merchant.user_id == current_user.id))
+    result = await db.execute(
+        select(Merchant)
+        .join(MerchantMember, Merchant.id == MerchantMember.merchant_id)
+        .where(MerchantMember.user_id == current_user.id)
+    )
     merchant = result.scalar_one_or_none()
     if not merchant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Merchant account not found for current user.")

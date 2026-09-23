@@ -45,26 +45,26 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center pt-20 px-4">
-      <div className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden">
-        <div className="flex items-center px-4 py-3 border-b border-slate-800 gap-3">
-          <Search className="w-4 h-4 text-slate-400" />
+    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-start justify-center pt-20 px-4">
+      <div className="w-full max-w-xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="flex items-center px-4 py-3.5 border-b border-slate-200 gap-3">
+          <Search className="w-4 h-4 text-[#0066FF]" />
           <input
             type="text"
             placeholder="Type a command or search..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
-            className="flex-1 bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+            className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none font-medium"
           />
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300">
+          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="max-h-80 overflow-y-auto p-2 space-y-1">
           {filtered.length === 0 ? (
-            <div className="p-4 text-center text-xs text-slate-500">No matching commands found.</div>
+            <div className="p-4 text-center text-xs text-slate-400">No matching commands found.</div>
           ) : (
             filtered.map((item, idx) => {
               const Icon = item.icon;
@@ -72,9 +72,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                 <button
                   key={idx}
                   onClick={() => handleSelect(item.path)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-300 hover:bg-indigo-600/20 hover:text-indigo-300 text-left transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-700 hover:bg-blue-50 hover:text-[#0066FF] font-medium text-left transition-colors cursor-pointer"
                 >
-                  <Icon className="w-4 h-4 text-slate-400" />
+                  <Icon className="w-4 h-4 text-slate-400 group-hover:text-[#0066FF]" />
                   <span>{item.label}</span>
                 </button>
               );

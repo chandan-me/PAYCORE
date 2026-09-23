@@ -8,18 +8,18 @@ interface StatusBadgeProps {
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = '' }) => {
   const normalized = (status || '').toUpperCase();
 
-  let colors = 'bg-slate-800 text-slate-300 border-slate-700';
+  let colors = 'bg-slate-100 text-slate-700 border-slate-300 font-semibold';
 
   if (['SUCCEEDED', 'VERIFIED', 'PAID', 'SUCCESS', 'ACTIVE', 'HEALTHY', 'WON', 'COMPLETED'].includes(normalized)) {
-    colors = 'bg-emerald-950/60 text-emerald-400 border-emerald-800/50';
+    colors = 'bg-emerald-50 text-emerald-700 border-emerald-300 font-semibold';
   } else if (['FAILED', 'REJECTED', 'BLOCKED', 'CANCELLED', 'LOST', 'REVOKED'].includes(normalized)) {
-    colors = 'bg-rose-950/60 text-rose-400 border-rose-800/50';
+    colors = 'bg-rose-50 text-rose-700 border-rose-300 font-semibold';
   } else if (['PROCESSING', 'UNDER_REVIEW', 'REQUIRES_CONFIRMATION', 'OPEN', 'RETRYING'].includes(normalized)) {
-    colors = 'bg-amber-950/60 text-amber-400 border-amber-800/50';
+    colors = 'bg-amber-50 text-amber-800 border-amber-300 font-semibold';
   } else if (['REQUIRES_PAYMENT_METHOD', 'PROFILE_INCOMPLETE', 'CREATED', 'PENDING'].includes(normalized)) {
-    colors = 'bg-indigo-950/60 text-indigo-400 border-indigo-800/50';
+    colors = 'bg-blue-50 text-[#0066FF] border-blue-200 font-semibold';
   } else if (['REFUNDED', 'PARTIALLY_REFUNDED'].includes(normalized)) {
-    colors = 'bg-purple-950/60 text-purple-400 border-purple-800/50';
+    colors = 'bg-purple-50 text-purple-700 border-purple-300 font-semibold';
   }
 
   return (
