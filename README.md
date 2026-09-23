@@ -1,5 +1,6 @@
 # 🚀 PAYCORE — Full-Stack API Banking & Payment Orchestration Engine
 
+<<<<<<< HEAD
 [![Database](https://img.shields.io/badge/Database-MySQL%208.0%20%7C%20SQLite-00758F.svg)](https://www.mysql.com/)
 [![Backend](https://img.shields.io/badge/Backend-FastAPI%20%7C%20Python%203.12-009688.svg)](https://fastapi.tiangolo.com/)
 [![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20TypeScript%20%2B%20Vite-61DAFB.svg)](https://react.dev/)
@@ -7,6 +8,9 @@
 [![Tests](https://img.shields.io/badge/Tests-8%2F8%20Passing%20(100%25)-brightgreen.svg)]()
 
 **PAYCORE** is a high-performance financial infrastructure and payment orchestration platform engineered following **Cashfree** and **Stripe** architectural standards. It provides instant UPI AutoPay 2.0 recurring mandates, 24x7 bank disbursals, multi-mode payment intents, double-entry financial ledger accounting, rule-based fraud detection, GST-compliant invoicing with PDF generation, cryptographic HMAC SHA-256 webhooks, and an interactive merchant console with 3D visualizers.
+=======
+**PAYCORE** is a custom payment orchestration service platform built architecturally similar to Stripe and Razorpay. It provides merchant onboarding, customer accounts, dual-mode payment intents (`TEST` vs `LIVE`), double-entry financial ledger accounting, rule-based risk engines, provider abstraction adapters, hosted customer checkout, HMAC SHA-256 webhooks, idempotency payload caching, and full analytics dashboards.
+>>>>>>> dcc2ca6b4222f53ca93b08b771a7dc73c6d83db0
 
 ---
 
@@ -144,6 +148,7 @@ tests/test_settlements_payouts.py::test_settlement_and_payout_flow PASSED [ 87%]
 tests/test_subscriptions.py::test_subscription_lifecycle PASSED          [100%]
 ======================== 8 passed in 1.75s =========================
 ```
+<<<<<<< HEAD
 
 ---
 
@@ -190,3 +195,5 @@ curl -X POST http://localhost:8000/v1/payouts \
 
 ## 📜 License
 This project is open source and available under the [MIT License](LICENSE).
+=======
+>>>>>>> dcc2ca6b4222f53ca93b08b771a7dc73c6d83db0
