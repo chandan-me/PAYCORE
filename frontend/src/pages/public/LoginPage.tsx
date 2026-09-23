@@ -6,6 +6,8 @@ import { ArrowRight, AlertCircle, ShieldCheck, Eye, EyeOff, Loader2, ArrowLeft }
 import api from '../../services/api';
 
 import { PaycoreLogo } from '../../components/PaycoreLogo';
+import { useToast } from '../../context/ToastContext';
+import { LoginSkeleton } from '../../components/SkeletonLoader';
 
 interface Props {
   onLoginSuccess: (token: string, user: any, merchantId?: string) => void;
@@ -34,6 +36,15 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
   const [showPasswordStep, setShowPasswordStep] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [initialMounting, setInitialMounting] = useState(true);
+
+  // Smooth initial skeleton transition
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setInitialMounting(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   // OTP Modal State
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -42,6 +53,7 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToast();
   const registrationNotice = (location.state as any)?.notice;
   const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -55,6 +67,7 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
         mode: 'login'
       });
       const { access_token, user_id, role, merchant_id, email } = resp.data;
+      toast.success('Welcome Back!', `Signed in successfully with Google (${email})`);
       onLoginSuccess(access_token, { id: user_id, email, role }, merchant_id);
       if (role === 'PLATFORM_ADMIN') {
         navigate('/admin');
@@ -66,14 +79,22 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
       const detail = err.response?.data?.detail;
       if (status === 404) {
         // Redirect to registration page if account doesn't exist
+        const noticeMsg = typeof detail === 'string' ? detail : 'No account found with this Google email. Please register your merchant profile.';
+        toast.warning(
+          'Account Not Found',
+          'No existing merchant account associated with this Google email. Redirecting to Registration...',
+          6000
+        );
         navigate('/register', {
           state: {
-            notice: typeof detail === 'string' ? detail : 'No account found with this Google email. Please register your merchant profile.',
+            notice: noticeMsg,
             google_token
           }
         });
       } else {
-        setError(formatErrorDetail(detail) || 'Google Sign-In failed.');
+        const errMsg = formatErrorDetail(detail) || 'Google Sign-In failed.';
+        setError(errMsg);
+        toast.error('Google Sign-In Failed', errMsg);
       }
     } finally {
       setLoading(false);
@@ -144,6 +165,7 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
           password: values.password
         });
         const { access_token, user_id, role, merchant_id } = resp.data;
+        toast.success('Welcome Back!', `Signed in successfully as ${values.identifier.trim()}`);
         onLoginSuccess(access_token, { id: user_id, email: values.identifier, role }, merchant_id);
         if (role === 'PLATFORM_ADMIN') {
           navigate('/admin');
@@ -151,7 +173,9 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
           navigate('/dashboard');
         }
       } catch (err: any) {
-        setError(formatErrorDetail(err.response?.data?.detail) || 'Invalid login credentials. Please check your password.');
+        const errMsg = formatErrorDetail(err.response?.data?.detail) || 'Invalid login credentials. Please check your password.';
+        setError(errMsg);
+        toast.error('Authentication Failed', errMsg);
       } finally {
         setLoading(false);
       }
@@ -162,16 +186,21 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
     setError('');
     try {
       const resp = await api.post('/auth/otp/request', { phone_number: phone.trim() });
-      setOtpMsg(resp.data.message || `6-digit OTP code sent to ${phone.trim()}`);
+      const msg = resp.data.message || `6-digit OTP code sent to ${phone.trim()}`;
+      setOtpMsg(msg);
+      toast.info('OTP Sent', `A verification code was dispatched to ${phone.trim()}`);
       setShowOtpModal(true);
     } catch (err: any) {
-      setError(formatErrorDetail(err.response?.data?.detail) || 'Failed to send OTP code.');
+      const errMsg = formatErrorDetail(err.response?.data?.detail) || 'Failed to send OTP code.';
+      setError(errMsg);
+      toast.error('OTP Request Failed', errMsg);
     }
   };
 
   const handleVerifyOtp = async () => {
     if (!otpCode || otpCode.length !== 6) {
       setOtpMsg('Please enter a valid 6-digit OTP code.');
+      toast.warning('Invalid OTP', 'Please enter a valid 6-digit numeric verification code.');
       return;
     }
     try {
@@ -182,10 +211,13 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
         password: 'phone_otp_verified'
       });
       const { access_token, user_id, role, merchant_id } = resp.data;
+      toast.success('OTP Verified', `Signed in successfully with phone verification.`);
       onLoginSuccess(access_token, { id: user_id, email: formik.values.identifier.trim(), role }, merchant_id);
       navigate('/dashboard');
     } catch (err: any) {
-      setOtpMsg(formatErrorDetail(err.response?.data?.detail) || 'Invalid 6-digit OTP code.');
+      const errMsg = formatErrorDetail(err.response?.data?.detail) || 'Invalid 6-digit OTP code.';
+      setOtpMsg(errMsg);
+      toast.error('Verification Failed', errMsg);
     }
   };
 
@@ -231,26 +263,35 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
       </div>
 
       {/* Right Login Action Panel */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative z-10 bg-white animate-fade-in">
-        <div className="w-full max-w-md space-y-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="cursor-pointer" onClick={() => navigate('/')}>
-              <PaycoreLogo size="md" />
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative z-10 bg-gradient-to-b from-slate-50/50 via-white to-blue-50/30">
+        {/* Ambient Glassmorphism Glow Orbs */}
+        <div className="absolute top-10 right-10 w-72 h-72 bg-[#0066FF]/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-10 left-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        {initialMounting ? (
+          <div className="w-full max-w-md animate-fade-in flex justify-center">
+            <LoginSkeleton />
+          </div>
+        ) : (
+          <div className="w-full max-w-md space-y-6 bg-white/85 backdrop-blur-2xl p-8 rounded-3xl border border-slate-200/80 shadow-[0_20px_60px_rgba(0,102,255,0.06)] animate-fade-in relative z-10">
+            <div className="flex items-center justify-between mb-2">
+              <div className="cursor-pointer" onClick={() => navigate('/')}>
+                <PaycoreLogo size="md" />
+              </div>
+              <button
+                onClick={() => navigate('/')}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-[#0066FF] hover:bg-blue-50 transition cursor-pointer flex items-center gap-1"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Home</span>
+              </button>
             </div>
-            <button
-              onClick={() => navigate('/')}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-[#0066FF] hover:bg-blue-50 transition cursor-pointer flex items-center gap-1"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Home</span>
-            </button>
-          </div>
-          <div className="space-y-1.5 text-center lg:text-left">
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Sign in to your account</h2>
-            <p className="text-xs text-slate-500">
-              Access your merchant analytics, double-entry ledger, and payment tools
-            </p>
-          </div>
+            <div className="space-y-1.5 text-center lg:text-left">
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Sign in to your account</h2>
+              <p className="text-xs text-slate-500">
+                Access your merchant analytics, double-entry ledger, and payment tools
+              </p>
+            </div>
 
           {registrationNotice && (
             <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2.5 font-medium">
@@ -381,6 +422,7 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
             </button>
           </div>
         </div>
+        )}
       </div>
 
       {/* OTP Verification Modal */}

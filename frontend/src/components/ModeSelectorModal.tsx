@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Zap, TestTube, Check, X, AlertTriangle } from 'lucide-react';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 interface ModeSelectorModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const ModeSelectorModal: React.FC<ModeSelectorModalProps> = ({
 }) => {
   const [selectedMode, setSelectedMode] = useState<'TEST' | 'LIVE'>(currentMode);
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   if (!isOpen) return null;
 
@@ -24,10 +26,17 @@ export const ModeSelectorModal: React.FC<ModeSelectorModalProps> = ({
     setLoading(true);
     try {
       await api.post('/merchants/mode', { mode: selectedMode });
+      toast.success(
+        `Environment Switched to ${selectedMode}`,
+        selectedMode === 'LIVE'
+          ? 'Live payment routing enabled. Real bank transactions will be processed.'
+          : 'Sandbox simulation enabled. Mock gateway responses will be used.'
+      );
       onRefresh();
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to update environment mode:', err);
+      toast.error('Environment Update Failed', err.response?.data?.detail || 'Could not change mode.');
     } finally {
       setLoading(false);
     }

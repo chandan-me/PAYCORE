@@ -6,10 +6,12 @@ import {
   Plus,
   Download,
   Search,
-  Trash2
+  Trash2,
+  Receipt
 } from 'lucide-react';
 import { MoneyFormat } from '../../components/MoneyFormat';
 import { StatusBadge } from '../../components/StatusBadge';
+import { useToast } from '../../context/ToastContext';
 
 interface LineItem {
   description: string;
@@ -68,6 +70,7 @@ export const InvoicesList: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const toast = useToast();
 
   const fetchInvoices = async () => {
     try {
@@ -82,6 +85,7 @@ export const InvoicesList: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to load invoices', err);
+      toast.error('Failed to Load Invoices', 'Could not retrieve GST invoices.');
     } finally {
       setLoading(false);
     }
@@ -98,9 +102,9 @@ export const InvoicesList: React.FC = () => {
       customerGstin: '',
       customerAddress: '',
       isInterstateTax: false,
-      notes: 'Payment due within 15 days of invoice date.',
+      notes: 'Payment is due within 15 days of invoice date. Thank you for your business.',
       lineItems: [
-        { description: 'Consulting / Software License', quantity: 1, unit_price: 100000, tax_rate_percent: 18 }
+        { description: 'Cloud Infrastructure & API Retainer', quantity: 1, unit_price: 249900, tax_rate_percent: 18 }
       ]
     },
     validationSchema: invoiceValidationSchema,
@@ -118,25 +122,38 @@ export const InvoicesList: React.FC = () => {
           body: JSON.stringify({
             customer_name: values.customerName.trim(),
             customer_email: values.customerEmail?.trim() || undefined,
-            customer_gstin: values.customerGstin?.trim() || undefined,
+            customer_gstin: values.customerGstin?.trim() ? values.customerGstin.trim().toUpperCase() : undefined,
             customer_address: values.customerAddress?.trim() || undefined,
             is_interstate_tax: values.isInterstateTax,
-            line_items: values.lineItems,
-            notes: values.notes?.trim() || undefined
+            notes: values.notes?.trim() || undefined,
+            line_items: values.lineItems.map(item => ({
+              description: item.description.trim(),
+              quantity: Number(item.quantity),
+              unit_price: Number(item.unit_price),
+              tax_rate_percent: Number(item.tax_rate_percent)
+            }))
           })
         });
 
         if (res.ok) {
+          const newInv = await res.json();
           setIsCreateOpen(false);
           resetForm();
           fetchInvoices();
+          toast.success(
+            'Tax Invoice Generated!',
+            `Invoice ${newInv.invoice_number} created for ${values.customerName.trim()} with GST breakdown.`
+          );
         } else {
           const errData = await res.json();
-          setFormError(errData.detail || 'Invoice creation failed.');
+          const errMsg = errData.detail || 'Invoice creation failed.';
+          setFormError(errMsg);
+          toast.error('Invoice Creation Failed', errMsg);
         }
       } catch (err: any) {
         console.error('Invoice creation failed', err);
         setFormError(err.message || 'Connection error.');
+        toast.error('Network Error', 'Could not create invoice.');
       } finally {
         setSubmitting(false);
       }
@@ -167,6 +184,7 @@ export const InvoicesList: React.FC = () => {
 
   const handleDownloadPDF = async (invId: string, invoiceNum: string) => {
     try {
+      toast.info('Generating PDF', `Preparing official GST tax invoice PDF (${invoiceNum})...`);
       const token = localStorage.getItem('paycore_token');
       const res = await fetch(`http://localhost:8000/v1/invoices/${invId}/download-pdf`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -180,9 +198,13 @@ export const InvoicesList: React.FC = () => {
         document.body.appendChild(a);
         a.click();
         a.remove();
+        toast.success('PDF Download Complete', `Downloaded ${invoiceNum}.pdf`);
+      } else {
+        toast.error('Download Failed', 'Could not generate PDF.');
       }
     } catch (err) {
       console.error('Download failed', err);
+      toast.error('Download Error', 'Network error generating PDF.');
     }
   };
 
@@ -193,93 +215,99 @@ export const InvoicesList: React.FC = () => {
   );
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl mx-auto">
+    <div className="p-6 sm:p-8 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800/80 pb-5">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <FileText className="w-6 h-6 text-indigo-400" />
-            Tax Invoices & GST Billing
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Generate itemized tax invoices with CGST/SGST/IGST breakdown and downloadable PDFs.
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <FileText className="w-6 h-6 text-[#0066FF]" />
+              Tax Invoices & GST Billing
+            </h1>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-mono font-bold">
+              GST Compliant
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Generate itemized tax invoices with CGST/SGST/IGST breakdown and downloadable PDFs
           </p>
         </div>
 
         <button
           onClick={() => setIsCreateOpen(true)}
-          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all shadow-md shadow-indigo-600/30 flex items-center gap-2"
+          className="px-4 py-2.5 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white font-bold text-xs transition-all shadow-md shadow-blue-600/20 flex items-center gap-2 cursor-pointer active:scale-95"
         >
           <Plus className="w-4 h-4" />
-          Create Invoice
+          <span>Create Tax Invoice</span>
         </button>
       </div>
 
       {/* Invoices Table */}
-      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl backdrop-blur-sm">
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between gap-4">
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4">
           <div className="relative w-72">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search invoice number or customer..."
-              className="w-full pl-9 pr-4 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              placeholder="Search invoice # or customer..."
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0066FF]/20 focus:border-[#0066FF]"
             />
           </div>
-          <span className="text-xs text-slate-500 font-mono">{filtered.length} Total Invoices</span>
+          <span className="text-xs text-slate-400 font-mono">{filtered.length} Total Invoices</span>
         </div>
 
         {loading ? (
-          <div className="p-12 text-center text-slate-500 text-sm font-mono">Loading invoices...</div>
+          <div className="p-12 text-center text-slate-400 text-xs font-mono">Loading invoices...</div>
         ) : filtered.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 text-sm">No invoices found.</div>
+          <div className="p-12 text-center text-slate-400 text-xs">No invoices found.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/60 text-slate-400 uppercase font-mono tracking-wider border-b border-slate-800">
+              <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-3.5">Invoice #</th>
-                  <th className="px-6 py-3.5">Customer</th>
-                  <th className="px-6 py-3.5">Date</th>
-                  <th className="px-6 py-3.5">Subtotal</th>
-                  <th className="px-6 py-3.5">Tax (GST)</th>
-                  <th className="px-6 py-3.5">Grand Total</th>
-                  <th className="px-6 py-3.5">Status</th>
-                  <th className="px-6 py-3.5 text-right">PDF</th>
+                  <th className="px-5 py-3.5">Invoice #</th>
+                  <th className="px-5 py-3.5">Customer</th>
+                  <th className="px-5 py-3.5">Date</th>
+                  <th className="px-5 py-3.5">Subtotal</th>
+                  <th className="px-5 py-3.5">Tax (GST)</th>
+                  <th className="px-5 py-3.5">Grand Total</th>
+                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5 text-right">PDF</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+              <tbody className="divide-y divide-slate-100 text-slate-700">
                 {filtered.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="px-6 py-4 font-mono text-indigo-400 font-medium">{inv.invoice_number}</td>
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-white">{inv.customer_name}</div>
-                      <div className="text-[11px] text-slate-500">{inv.customer_email || 'No email'}</div>
+                  <tr key={inv.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="px-5 py-3.5 font-mono text-[#0066FF] font-bold">{inv.invoice_number}</td>
+                    <td className="px-5 py-3.5">
+                      <div className="font-bold text-slate-900">{inv.customer_name}</div>
+                      <div className="text-[11px] text-slate-400">{inv.customer_email || 'No email'}</div>
                     </td>
-                    <td className="px-6 py-4 text-slate-400 font-mono">
+                    <td className="px-5 py-3.5 text-slate-500 font-mono">
                       {new Date(inv.created_at).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-3.5">
                       <MoneyFormat amount={inv.subtotal} currency={inv.currency} />
                     </td>
-                    <td className="px-6 py-4 text-slate-400">
+                    <td className="px-5 py-3.5 text-slate-500">
                       <MoneyFormat amount={inv.tax_amount} currency={inv.currency} />
                     </td>
-                    <td className="px-6 py-4 font-bold text-white">
+                    <td className="px-5 py-3.5 font-bold text-slate-900">
                       <MoneyFormat amount={inv.total_amount} currency={inv.currency} />
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-3.5">
                       <StatusBadge status={inv.status} />
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-5 py-3.5 text-right">
                       <button
                         onClick={() => handleDownloadPDF(inv.id, inv.invoice_number)}
-                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs inline-flex items-center gap-1.5 transition-colors"
+                        className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs inline-flex items-center gap-1.5 transition cursor-pointer"
+                        title="Download Tax Invoice PDF"
                       >
-                        <Download className="w-3.5 h-3.5 text-indigo-400" />
-                        PDF
+                        <Download className="w-3.5 h-3.5 text-[#0066FF]" />
+                        <span>PDF</span>
                       </button>
                     </td>
                   </tr>
@@ -292,23 +320,31 @@ export const InvoicesList: React.FC = () => {
 
       {/* Create Invoice Modal */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <FileText className="w-5 h-5 text-indigo-400" />
-              Generate Itemized GST Tax Invoice
-            </h2>
+        <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto space-y-4 animate-scale-up">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-[#0066FF]" />
+                Generate Itemized GST Tax Invoice
+              </h2>
+              <button
+                onClick={() => setIsCreateOpen(false)}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
 
             {formError && (
-              <div className="mt-3 p-3 bg-red-950/50 border border-red-500/30 rounded-lg text-xs text-red-400">
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium">
                 {formError}
               </div>
             )}
 
-            <form onSubmit={formik.handleSubmit} className="mt-5 space-y-4 text-xs">
+            <form onSubmit={formik.handleSubmit} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-400 font-medium mb-1">Customer / Company Name *</label>
+                  <label className="block text-slate-700 font-bold mb-1">Customer / Company Name *</label>
                   <input
                     type="text"
                     name="customerName"
@@ -316,18 +352,18 @@ export const InvoicesList: React.FC = () => {
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                     placeholder="e.g. Acme Labs Ltd."
-                    className={`w-full bg-slate-950 border rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 ${
+                    className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 ${
                       formik.touched.customerName && formik.errors.customerName
-                        ? 'border-rose-500 focus:ring-rose-500'
-                        : 'border-slate-800 focus:ring-indigo-500'
+                        ? 'border-rose-400 focus:ring-rose-500'
+                        : 'border-slate-200 focus:ring-[#0066FF]/20 focus:border-[#0066FF]'
                     }`}
                   />
                   {formik.touched.customerName && formik.errors.customerName && (
-                    <p className="mt-1 text-[11px] text-rose-400">{formik.errors.customerName}</p>
+                    <p className="mt-1 text-[11px] text-rose-600 font-medium">{formik.errors.customerName}</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-slate-400 font-medium mb-1">Customer Email (Optional)</label>
+                  <label className="block text-slate-700 font-bold mb-1">Customer Email (Optional)</label>
                   <input
                     type="email"
                     name="customerEmail"
@@ -335,21 +371,21 @@ export const InvoicesList: React.FC = () => {
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                     placeholder="e.g. billing@acme.com"
-                    className={`w-full bg-slate-950 border rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 ${
+                    className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 ${
                       formik.touched.customerEmail && formik.errors.customerEmail
-                        ? 'border-rose-500 focus:ring-rose-500'
-                        : 'border-slate-800 focus:ring-indigo-500'
+                        ? 'border-rose-400 focus:ring-rose-500'
+                        : 'border-slate-200 focus:ring-[#0066FF]/20 focus:border-[#0066FF]'
                     }`}
                   />
                   {formik.touched.customerEmail && formik.errors.customerEmail && (
-                    <p className="mt-1 text-[11px] text-rose-400">{formik.errors.customerEmail}</p>
+                    <p className="mt-1 text-[11px] text-rose-600 font-medium">{formik.errors.customerEmail}</p>
                   )}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-400 font-medium mb-1">Customer GSTIN (Optional)</label>
+                  <label className="block text-slate-700 font-bold mb-1">Customer GSTIN (Optional)</label>
                   <input
                     type="text"
                     name="customerGstin"
@@ -357,14 +393,14 @@ export const InvoicesList: React.FC = () => {
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                     placeholder="e.g. 29AAAAA0000A1Z5"
-                    className={`w-full bg-slate-950 border rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 uppercase ${
+                    className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 uppercase ${
                       formik.touched.customerGstin && formik.errors.customerGstin
-                        ? 'border-rose-500 focus:ring-rose-500'
-                        : 'border-slate-800 focus:ring-indigo-500'
+                        ? 'border-rose-400 focus:ring-rose-500'
+                        : 'border-slate-200 focus:ring-[#0066FF]/20 focus:border-[#0066FF]'
                     }`}
                   />
                   {formik.touched.customerGstin && formik.errors.customerGstin && (
-                    <p className="mt-1 text-[11px] text-rose-400">{formik.errors.customerGstin}</p>
+                    <p className="mt-1 text-[11px] text-rose-600 font-medium">{formik.errors.customerGstin}</p>
                   )}
                 </div>
                 <div className="flex items-center pt-6 gap-2">
@@ -374,16 +410,16 @@ export const InvoicesList: React.FC = () => {
                     name="isInterstateTax"
                     checked={formik.values.isInterstateTax}
                     onChange={formik.handleChange}
-                    className="rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    className="rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF] cursor-pointer"
                   />
-                  <label htmlFor="interstate" className="text-slate-300 font-medium cursor-pointer">
+                  <label htmlFor="interstate" className="text-slate-700 font-medium cursor-pointer">
                     Interstate Supply (Apply IGST instead of CGST+SGST)
                   </label>
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Customer Address (Optional)</label>
+                <label className="block text-slate-700 font-bold mb-1">Customer Address (Optional)</label>
                 <input
                   type="text"
                   name="customerAddress"
@@ -391,21 +427,21 @@ export const InvoicesList: React.FC = () => {
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   placeholder="e.g. Tech Park, Outer Ring Road, Bangalore"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0066FF]/20 focus:border-[#0066FF]"
                 />
               </div>
 
               {/* Line Items */}
               <div className="space-y-2 pt-2">
-                <label className="block text-slate-400 font-medium">Line Items *</label>
+                <label className="block text-slate-700 font-bold">Line Items *</label>
                 {formik.values.lineItems.map((item, index) => (
-                  <div key={index} className="flex gap-2 items-center bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                  <div key={index} className="flex gap-2 items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                     <input
                       type="text"
                       placeholder="Description *"
                       value={item.description}
                       onChange={(e) => handleUpdateLineItem(index, 'description', e.target.value)}
-                      className="flex-1 bg-transparent border-0 text-white focus:outline-none"
+                      className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#0066FF]"
                     />
                     <input
                       type="number"
@@ -413,35 +449,35 @@ export const InvoicesList: React.FC = () => {
                       placeholder="Qty"
                       value={item.quantity}
                       onChange={(e) => handleUpdateLineItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                      className="w-16 bg-slate-900 border border-slate-800 rounded px-2 py-1 text-white text-center focus:outline-none"
+                      className="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-slate-900 text-center focus:outline-none"
                     />
                     <div className="flex items-center gap-1">
-                      <span className="text-slate-500">₹</span>
+                      <span className="text-slate-400 font-mono">₹</span>
                       <input
                         type="number"
                         min="0"
                         placeholder="Price"
                         value={item.unit_price / 100}
                         onChange={(e) => handleUpdateLineItem(index, 'unit_price', Math.round(parseFloat(e.target.value || '0') * 100))}
-                        className="w-24 bg-slate-900 border border-slate-800 rounded px-2 py-1 text-white text-right focus:outline-none"
+                        className="w-24 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-slate-900 text-right focus:outline-none font-mono"
                       />
                     </div>
                     <select
                       value={item.tax_rate_percent}
                       onChange={(e) => handleUpdateLineItem(index, 'tax_rate_percent', parseFloat(e.target.value))}
-                      className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-white focus:outline-none cursor-pointer"
+                      className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-slate-900 focus:outline-none cursor-pointer text-xs font-semibold"
                     >
-                      <option value="0">0%</option>
-                      <option value="5">5%</option>
-                      <option value="12">12%</option>
+                      <option value="0">0% GST</option>
+                      <option value="5">5% GST</option>
+                      <option value="12">12% GST</option>
                       <option value="18">18% (Standard)</option>
-                      <option value="28">28%</option>
+                      <option value="28">28% GST</option>
                     </select>
                     {formik.values.lineItems.length > 1 && (
                       <button
                         type="button"
                         onClick={() => handleRemoveLineItem(index)}
-                        className="p-1 text-slate-500 hover:text-red-400 cursor-pointer"
+                        className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -452,36 +488,36 @@ export const InvoicesList: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleAddLineItem}
-                  className="text-xs text-indigo-400 font-semibold hover:text-indigo-300 flex items-center gap-1 mt-1 cursor-pointer"
+                  className="text-xs text-[#0066FF] font-bold hover:underline flex items-center gap-1 mt-1 cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Add Another Item
+                  <Plus className="w-3.5 h-3.5" /> Add Another Line Item
                 </button>
               </div>
 
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Notes & Terms</label>
+                <label className="block text-slate-700 font-bold mb-1">Notes & Terms</label>
                 <textarea
                   rows={2}
                   name="notes"
                   value={formik.values.notes}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0066FF]/20 focus:border-[#0066FF]"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsCreateOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white font-bold shadow-md shadow-blue-600/20 transition-all cursor-pointer active:scale-95"
                 >
                   {submitting ? 'Generating Invoice...' : 'Create & Issue Invoice'}
                 </button>

@@ -6,10 +6,12 @@ import {
   Plus,
   Copy,
   CheckCircle2,
-  ExternalLink
+  ExternalLink,
+  Globe
 } from 'lucide-react';
 import { MoneyFormat } from '../../components/MoneyFormat';
 import { StatusBadge } from '../../components/StatusBadge';
+import { useToast } from '../../context/ToastContext';
 
 interface PaymentLink {
   id: string;
@@ -53,6 +55,7 @@ export const PaymentLinksView: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const toast = useToast();
 
   const fetchLinks = async () => {
     try {
@@ -67,6 +70,7 @@ export const PaymentLinksView: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to load payment links', err);
+      toast.error('Failed to Load Links', 'Could not retrieve payment links.');
     } finally {
       setLoading(false);
     }
@@ -79,6 +83,7 @@ export const PaymentLinksView: React.FC = () => {
   const handleCopy = (url: string, id: string) => {
     navigator.clipboard.writeText(url);
     setCopiedId(id);
+    toast.copied(url, 'Payment Link Copied to Clipboard');
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -115,16 +120,25 @@ export const PaymentLinksView: React.FC = () => {
         });
 
         if (res.ok) {
+          const newLink = await res.json();
           setIsCreateOpen(false);
           resetForm();
           fetchLinks();
+          toast.success(
+            'Payment Link Created!',
+            `Link for "${values.title}" (₹${values.amount}) is ready. Share with your customers.`,
+            newLink.short_url
+          );
         } else {
           const errData = await res.json();
-          setFormError(errData.detail || 'Failed to create payment link.');
+          const errMsg = errData.detail || 'Failed to create payment link.';
+          setFormError(errMsg);
+          toast.error('Payment Link Creation Failed', errMsg);
         }
       } catch (err: any) {
-        console.error('Failed to create link', err);
+        console.error(err);
         setFormError(err.message || 'Network error.');
+        toast.error('Network Error', err.message || 'Could not connect to payment link service.');
       } finally {
         setSubmitting(false);
       }
@@ -132,81 +146,96 @@ export const PaymentLinksView: React.FC = () => {
   });
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl mx-auto">
+    <div className="p-6 sm:p-8 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800/80 pb-5">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <LinkIcon className="w-6 h-6 text-indigo-400" />
-            Shareable Payment Links
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Create instant hosted checkout links to share with customers across WhatsApp, Email, or SMS.
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <LinkIcon className="w-6 h-6 text-[#0066FF]" />
+              Shareable Payment Links
+            </h1>
+            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[#0066FF] border border-blue-200 text-[10px] font-mono font-bold">
+              Instant Collect
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Create instant hosted checkout links to share with customers across WhatsApp, Email, or SMS with automated reconciliation
           </p>
         </div>
 
         <button
           onClick={() => setIsCreateOpen(true)}
-          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all shadow-md shadow-indigo-600/30 flex items-center gap-2"
+          className="px-4 py-2.5 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white font-bold text-xs transition-all shadow-md shadow-blue-600/20 flex items-center gap-2 cursor-pointer active:scale-95"
         >
           <Plus className="w-4 h-4" />
-          Create Payment Link
+          <span>Create Payment Link</span>
         </button>
       </div>
 
       {/* Links List */}
-      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl backdrop-blur-sm">
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Globe className="w-4 h-4 text-[#0066FF]" />
+            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Active Links</h2>
+          </div>
+          <span className="text-xs font-mono text-slate-400">{links.length} Links Active</span>
+        </div>
+
         {loading ? (
-          <div className="p-12 text-center text-slate-500 text-sm font-mono">Loading payment links...</div>
+          <div className="p-12 text-center text-slate-400 text-xs font-mono">Loading payment links...</div>
         ) : links.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 text-sm">No payment links created yet.</div>
+          <div className="p-12 text-center text-slate-400 text-xs">
+            No payment links created yet. Click "Create Payment Link" to start collecting payments.
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/60 text-slate-400 uppercase font-mono tracking-wider border-b border-slate-800">
+              <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-3.5">Title & Reference</th>
-                  <th className="px-6 py-3.5">Amount</th>
-                  <th className="px-6 py-3.5">Hosted URL</th>
-                  <th className="px-6 py-3.5">Expires</th>
-                  <th className="px-6 py-3.5">Status</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
+                  <th className="px-5 py-3.5">Title & Reference</th>
+                  <th className="px-5 py-3.5">Amount</th>
+                  <th className="px-5 py-3.5">Hosted URL</th>
+                  <th className="px-5 py-3.5">Expires</th>
+                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+              <tbody className="divide-y divide-slate-100 text-slate-700">
                 {links.map((link) => (
-                  <tr key={link.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-white">{link.title}</div>
-                      <div className="font-mono text-[11px] text-indigo-400">{link.slug}</div>
+                  <tr key={link.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="px-5 py-3.5">
+                      <div className="font-bold text-slate-900">{link.title}</div>
+                      <div className="font-mono text-[11px] text-[#0066FF]">{link.slug}</div>
                     </td>
-                    <td className="px-6 py-4 font-bold text-white">
+                    <td className="px-5 py-3.5 font-bold text-slate-900">
                       <MoneyFormat amount={link.amount} currency={link.currency} />
                     </td>
-                    <td className="px-6 py-4 font-mono text-[11px] text-slate-400 truncate max-w-xs">
+                    <td className="px-5 py-3.5 font-mono text-[11px] text-slate-500 truncate max-w-xs">
                       {link.short_url}
                     </td>
-                    <td className="px-6 py-4 text-slate-400 font-mono">
+                    <td className="px-5 py-3.5 text-slate-500 font-mono">
                       {link.expires_at ? new Date(link.expires_at).toLocaleDateString() : 'Never'}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-3.5">
                       <StatusBadge status={link.status} />
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-5 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleCopy(link.short_url, link.id)}
-                          className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium inline-flex items-center gap-1 transition-colors"
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold inline-flex items-center gap-1 transition cursor-pointer"
                         >
                           {copiedId === link.id ? (
                             <>
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                              Copied!
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Copied!</span>
                             </>
                           ) : (
                             <>
-                              <Copy className="w-3.5 h-3.5 text-slate-400" />
-                              Copy
+                              <Copy className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Copy Link</span>
                             </>
                           )}
                         </button>
@@ -214,7 +243,8 @@ export const PaymentLinksView: React.FC = () => {
                           href={link.short_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-[#0066FF] transition cursor-pointer"
+                          title="Open Checkout Page"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
@@ -230,42 +260,50 @@ export const PaymentLinksView: React.FC = () => {
 
       {/* Create Modal */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <LinkIcon className="w-5 h-5 text-indigo-400" />
-              Generate Hosted Payment Link
-            </h2>
+        <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-scale-up">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <LinkIcon className="w-5 h-5 text-[#0066FF]" />
+                Generate Hosted Payment Link
+              </h2>
+              <button
+                onClick={() => setIsCreateOpen(false)}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
 
             {formError && (
-              <div className="mt-3 p-3 bg-red-950/50 border border-red-500/30 rounded-lg text-xs text-red-400">
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium">
                 {formError}
               </div>
             )}
 
-            <form onSubmit={formik.handleSubmit} className="mt-5 space-y-4 text-xs">
+            <form onSubmit={formik.handleSubmit} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Purpose / Title *</label>
+                <label className="block text-slate-700 font-bold mb-1">Purpose / Title *</label>
                 <input
                   type="text"
                   name="title"
                   value={formik.values.title}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
-                  placeholder="e.g. Website Design Deposit"
-                  className={`w-full bg-slate-950 border rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 ${
+                  placeholder="e.g. Website Design Invoice"
+                  className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 ${
                     formik.touched.title && formik.errors.title
-                      ? 'border-rose-500 focus:ring-rose-500'
-                      : 'border-slate-800 focus:ring-indigo-500'
+                      ? 'border-rose-400 focus:ring-rose-500'
+                      : 'border-slate-200 focus:ring-[#0066FF]/20 focus:border-[#0066FF]'
                   }`}
                 />
                 {formik.touched.title && formik.errors.title && (
-                  <p className="mt-1 text-[11px] text-rose-400">{formik.errors.title}</p>
+                  <p className="mt-1 text-[11px] text-rose-600 font-medium">{formik.errors.title}</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Amount (INR) *</label>
+                <label className="block text-slate-700 font-bold mb-1">Amount (INR) *</label>
                 <input
                   type="number"
                   step="0.01"
@@ -274,20 +312,20 @@ export const PaymentLinksView: React.FC = () => {
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   placeholder="e.g. 2499.00"
-                  className={`w-full bg-slate-950 border rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 ${
+                  className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 ${
                     formik.touched.amount && formik.errors.amount
-                      ? 'border-rose-500 focus:ring-rose-500'
-                      : 'border-slate-800 focus:ring-indigo-500'
+                      ? 'border-rose-400 focus:ring-rose-500'
+                      : 'border-slate-200 focus:ring-[#0066FF]/20 focus:border-[#0066FF]'
                   }`}
                 />
                 {formik.touched.amount && formik.errors.amount && (
-                  <p className="mt-1 text-[11px] text-rose-400">{formik.errors.amount}</p>
+                  <p className="mt-1 text-[11px] text-rose-600 font-medium">{formik.errors.amount}</p>
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 font-medium mb-1">Customer Email (Optional)</label>
+                  <label className="block text-slate-700 font-bold mb-1">Customer Email (Optional)</label>
                   <input
                     type="email"
                     name="customerEmail"
@@ -295,18 +333,18 @@ export const PaymentLinksView: React.FC = () => {
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                     placeholder="e.g. client@example.com"
-                    className={`w-full bg-slate-950 border rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 ${
+                    className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 ${
                       formik.touched.customerEmail && formik.errors.customerEmail
-                        ? 'border-rose-500 focus:ring-rose-500'
-                        : 'border-slate-800 focus:ring-indigo-500'
+                        ? 'border-rose-400 focus:ring-rose-500'
+                        : 'border-slate-200 focus:ring-[#0066FF]/20 focus:border-[#0066FF]'
                     }`}
                   />
                   {formik.touched.customerEmail && formik.errors.customerEmail && (
-                    <p className="mt-1 text-[11px] text-rose-400">{formik.errors.customerEmail}</p>
+                    <p className="mt-1 text-[11px] text-rose-600 font-medium">{formik.errors.customerEmail}</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-slate-400 font-medium mb-1">Expiry (Days) *</label>
+                  <label className="block text-slate-700 font-bold mb-1">Expiry (Days) *</label>
                   <input
                     type="number"
                     min="1"
@@ -315,20 +353,20 @@ export const PaymentLinksView: React.FC = () => {
                     value={formik.values.expiresInDays}
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
-                    className={`w-full bg-slate-950 border rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 ${
+                    className={`w-full bg-slate-50 border rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 ${
                       formik.touched.expiresInDays && formik.errors.expiresInDays
-                        ? 'border-rose-500 focus:ring-rose-500'
-                        : 'border-slate-800 focus:ring-indigo-500'
+                        ? 'border-rose-400 focus:ring-rose-500'
+                        : 'border-slate-200 focus:ring-[#0066FF]/20 focus:border-[#0066FF]'
                     }`}
                   />
                   {formik.touched.expiresInDays && formik.errors.expiresInDays && (
-                    <p className="mt-1 text-[11px] text-rose-400">{formik.errors.expiresInDays}</p>
+                    <p className="mt-1 text-[11px] text-rose-600 font-medium">{formik.errors.expiresInDays}</p>
                   )}
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Description (Optional)</label>
+                <label className="block text-slate-700 font-bold mb-1">Description (Optional)</label>
                 <textarea
                   rows={2}
                   name="description"
@@ -336,25 +374,25 @@ export const PaymentLinksView: React.FC = () => {
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   placeholder="Additional notes for your customer..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0066FF]/20 focus:border-[#0066FF]"
                 />
                 {formik.touched.description && formik.errors.description && (
-                  <p className="mt-1 text-[11px] text-rose-400">{formik.errors.description}</p>
+                  <p className="mt-1 text-[11px] text-rose-600 font-medium">{formik.errors.description}</p>
                 )}
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsCreateOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium transition-colors"
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-[#0066FF] hover:bg-[#0052cc] text-white font-bold shadow-md shadow-blue-600/20 transition-all cursor-pointer active:scale-95"
                 >
                   {submitting ? 'Generating...' : 'Create Payment Link'}
                 </button>

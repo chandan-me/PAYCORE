@@ -181,12 +181,15 @@ export const StylishLandingNavbar: React.FC<StylishLandingNavbarProps> = ({ onOp
         </button>
       </div>
 
+      {/* Iridescent Top Accent Bar */}
+      <div className="h-[2.5px] bg-gradient-to-r from-[#0066FF] via-[#6851FF] via-[#00D284] to-[#0066FF] w-full bg-[length:200%_auto] animate-[shimmer_4s_linear_infinite]" />
+
       {/* Main Glassmorphism Navbar */}
       <header
-        className={`sticky top-0 z-40 transition-all duration-300 w-full ${
+        className={`sticky top-0 z-40 transition-all duration-300 w-full backdrop-blur-2xl ${
           isScrolled
-            ? 'bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-[0_4px_25px_-4px_rgba(0,102,255,0.06)] py-3'
-            : 'bg-white border-b border-slate-100 py-4'
+            ? 'bg-white/85 border-b border-slate-200/80 shadow-[0_8px_32px_rgba(0,102,255,0.06)] py-3'
+            : 'bg-white/90 border-b border-slate-100 py-3.5'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">

@@ -18,9 +18,9 @@ import {
   Calculator,
   Star
 } from 'lucide-react';
-import { PaycoreLogo } from '../../components/PaycoreLogo';
 import { Fintech3DHero } from '../../components/Fintech3DHero';
 import { StylishLandingNavbar } from '../../components/StylishLandingNavbar';
+import { GlassFooter } from '../../components/GlassFooter';
 import { useToast } from '../../context/ToastContext';
 
 export const LandingPage: React.FC = () => {
@@ -800,27 +800,11 @@ func main() {
             </div>
           </div>
         </div>
+        {/* Footer */}
+        <div className="pt-8">
+          <GlassFooter />
+        </div>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-200 py-10 px-4 sm:px-6 lg:px-12 max-w-7xl w-full mx-auto text-xs text-slate-500 space-y-6 bg-white">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="cursor-pointer" onClick={() => navigate('/')}>
-            <PaycoreLogo size="sm" subtitle="CASHFREE PAYMENTS ENGINE" />
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-6 font-medium">
-            <a href="#products" className="hover:text-[#0066FF] transition">Payment Gateway</a>
-            <a href="#calculator" className="hover:text-[#0066FF] transition">Pricing & Savings</a>
-            <a href="#comparison" className="hover:text-[#0066FF] transition">Why PAYCORE</a>
-            <a href="#developers" className="hover:text-[#0066FF] transition">SDKs</a>
-            <button onClick={() => navigate('/docs/api')} className="hover:text-[#0066FF] transition cursor-pointer">API Docs</button>
-            <button onClick={() => navigate('/login')} className="hover:text-[#0066FF] transition cursor-pointer">Merchant Login</button>
-          </div>
-        </div>
-        <div className="text-center text-[11px] text-slate-400">
-          © 2026 PAYCORE Technologies Inc. Powered by Cashfree Architecture & MySQL 8.0 Engine. All rights reserved.
-        </div>
-      </footer>
     </div>
   );
 };

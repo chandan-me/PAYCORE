@@ -1,199 +1,335 @@
-# 🚀 PAYCORE — Full-Stack API Banking & Payment Orchestration Engine
+# 🚀 PAYCORE — Enterprise API Banking & Payment Orchestration Engine
 
-<<<<<<< HEAD
-[![Database](https://img.shields.io/badge/Database-MySQL%208.0%20%7C%20SQLite-00758F.svg)](https://www.mysql.com/)
+[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-00D284.svg)](https://github.com/chandan-me/PAYCORE)
+[![CI / CD](https://github.com/chandan-me/PAYCORE/actions/workflows/ci.yml/badge.svg)](https://github.com/chandan-me/PAYCORE/actions)
+[![Database](https://img.shields.io/badge/Database-MySQL%208.0%20%7C%20PostgreSQL%20%7C%20SQLite-00758F.svg)](https://www.mysql.com/)
 [![Backend](https://img.shields.io/badge/Backend-FastAPI%20%7C%20Python%203.12-009688.svg)](https://fastapi.tiangolo.com/)
-[![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20TypeScript%20%2B%20Vite-61DAFB.svg)](https://react.dev/)
-[![Design](https://img.shields.io/badge/UI%2FUX-Cashfree%20Light%20Theme-0066FF.svg)](https://www.cashfree.com/)
+[![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20TypeScript%20%2B%20Vite%208-61DAFB.svg)](https://react.dev/)
+[![Design System](https://img.shields.io/badge/UI%2FUX-Cashfree%20Light%20Theme-0066FF.svg)](https://www.cashfree.com/)
 [![Tests](https://img.shields.io/badge/Tests-8%2F8%20Passing%20(100%25)-brightgreen.svg)]()
+[![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
-**PAYCORE** is a high-performance financial infrastructure and payment orchestration platform engineered following **Cashfree** and **Stripe** architectural standards. It provides instant UPI AutoPay 2.0 recurring mandates, 24x7 bank disbursals, multi-mode payment intents, double-entry financial ledger accounting, rule-based fraud detection, GST-compliant invoicing with PDF generation, cryptographic HMAC SHA-256 webhooks, and an interactive merchant console with 3D visualizers.
-=======
-**PAYCORE** is a custom payment orchestration service platform built architecturally similar to Stripe and Razorpay. It provides merchant onboarding, customer accounts, dual-mode payment intents (`TEST` vs `LIVE`), double-entry financial ledger accounting, rule-based risk engines, provider abstraction adapters, hosted customer checkout, HMAC SHA-256 webhooks, idempotency payload caching, and full analytics dashboards.
->>>>>>> dcc2ca6b4222f53ca93b08b771a7dc73c6d83db0
+**PAYCORE** is an enterprise-grade API banking and payment orchestration infrastructure engineered following **Cashfree Payments** and **Stripe** architectural standards. Built for global scalability, high-concurrency transaction throughput, zero-downtime multi-rail routing, double-entry financial ledger accounting, and seamless developer integration.
 
 ---
 
-## 🌟 Core Platform Highlights
+## 🌟 Platform Capabilities & Cashfree Parity
 
-- ⚡ **Interactive 3D Hero Experience**: Real-time 3D particle constellation canvas with dynamic cursor parallax and tilting holographic metallic card.
-- 💳 **Cashfree-Inspired Modern Light Theme**: High-contrast, accessibility-first design system (`#0066FF` brand blue, `#00D284` mint green, `#6851FF` indigo accent, `#F8FAFC` background).
-- 🏦 **Double-Entry Financial Ledger**: Strictly balances debits and credits ($\sum \text{Debits} == \sum \text{Credits}$) across `CUSTOMER_CLEARING`, `MERCHANT_PAYABLE`, and `PLATFORM_REVENUE` with integer minor units (paise/cents).
-- 🔄 **Strict Payment State Machine**: Enforces non-reversible lifecycle transitions: `REQUIRES_PAYMENT_METHOD` → `PROCESSING` → `SUCCEEDED` / `FAILED` → `REFUNDED`.
-- 💸 **24x7 Instant Bank Payouts**: Disburse funds instantly across IMPS, NEFT, and RTGS with automated UTR tracking and double-entry balance locks.
-- 🔁 **RBI-Compliant UPI AutoPay 2.0**: Native e-mandates with automated 24-hour pre-debit notifications and recurring billing cycles.
-- 📄 **GST Compliance & Invoicing**: Itemized CGST, SGST, and IGST calculations with dynamic downloadable PDF invoices.
-- 🛡️ **Risk & Dispute Shield**: Built-in chargeback defense rebuttal workflows and transaction velocity scoring.
-- 🔐 **Dual Auth (Google OAuth 2.0 & Email/OTP)**: Official Google Sign-In with real token validation, phone OTP verification, and Formik + Yup schema validation on all inputs.
-- 🚀 **Sub-Second Lazy Loading**: Route-level dynamic code splitting via `React.lazy()` and `<Suspense>` with a custom high-performance loader.
+| Feature Category | Capabilities & Specifications | Cashfree Benchmark |
+|---|---|---|
+| **Payment Gateway (PG)** | 120+ Payment Modes (Cards, UPI, Netbanking, Wallets, EMI), 3DS2 Dynamic Auth, Dual Mode (`TEST` / `LIVE`) | Instant Collect & Checkout |
+| **Instant 24x7 Payouts** | Sub-second bank disbursals via IMPS, NEFT, RTGS & UPI VPA with automated UTR tracking & balance reservation | Cashfree Payouts |
+| **UPI AutoPay 2.0** | Recurring mandate creation, automated 24-hour pre-debit notifications, execution lifecycle | Cashfree Subscriptions |
+| **Merchant KYC & Onboarding** | Multi-step portal: GSTIN auto-lookup via Govt GSTN, ₹1.00 Penny Drop bank account verification, Director KYC | Cashfree Merchant Onboarding |
+| **Smart Payment Links** | Single/Multi-use payment links, WhatsApp & SMS triggers, expiry windows, branded hosted payment pages | Cashfree Payment Links |
+| **GST Invoicing Engine** | Itemized CGST, SGST, IGST calculations, HSN/SAC codes, dynamic PDF generation & download | Cashfree Invoicing |
+| **Double-Entry Ledger** | Strict debits = credits balance ($\sum \text{Debits} == \sum \text{Credits}$) with integer minor units (paise/cents) | Core Banking Ledger |
+| **Dispute & Risk Shield** | Chargeback lifecycles (`UNDER_REVIEW`, `EVIDENCE_SUBMITTED`, `WON`, `LOST`), velocity risk scoring | Cashfree Risk & Shield |
+| **Developer Tools** | Interactive Developer Simulator, idempotency payload cache, cryptographic HMAC SHA-256 webhooks | Developer Suite |
+| **UI / UX Experience** | 3D dynamic hero animation, Cashfree Light Theme (`#0066FF`, `#00D284`, `#F8FAFC`), Toast Notifications | Modern Fintech Portal |
 
 ---
 
-## 🏗️ System Architecture
+## 🏗️ High-Level System Architecture
 
 ```text
-                                [ Client / Customer ]
-                                          │
-                  ┌───────────────────────┴───────────────────────┐
-                  ▼                                               ▼
-      [ Hosted Checkout Session ]                      [ Merchant Application ]
-       (/checkout/:sessionId)                           (Bearer sk_test_...)
-                  │                                               │
-                  └───────────────────────┬───────────────────────┘
-                                          ▼
-      ┌────────────────────────────────────────────────────────────────────────┐
-      │                        PAYCORE REST API v1.0                           │
-      │   (FastAPI + JWT Auth + Google OAuth 2.0 + Idempotency-Key Engine)     │
-      └───────────────────────────────────┬────────────────────────────────────┘
-                                          │
-                     ┌────────────────────┴────────────────────┐
-                     ▼                                         ▼
-      ┌──────────────────────────────┐          ┌──────────────────────────────┐
-      │    Payment State Machine     │          │      Risk & Fraud Engine     │
-      │   (Strict Transition Rules)  │          │    (Rule-based Scoring)      │
-      └──────────────┬───────────────┘          └──────────────┬───────────────┘
-                     │                                         │
-                     └────────────────────┬────────────────────┘
-                                          ▼
-                               ┌──────────────────────┐
-                               │    Payment Router    │
-                               └──────────┬───────────┘
-                                          ▼
-                         ┌──────────────────────────────────┐
-                         │   Pluggable Payment Providers    │
-                         ├──────────────────────────────────┤
-                         │ • SandboxProvider (Simulations)  │
-                         │ • UPI AutoPay 2.0 Mandate Engine │
-                         │ • IMPS 24x7 Disbursal Rail       │
-                         └────────────────┬─────────────────┘
-                                          │
-                     ┌────────────────────┴────────────────────┐
-                     ▼                                         ▼
-      ┌──────────────────────────────┐          ┌──────────────────────────────┐
-      │   Double-Entry SQL Ledger    │          │    Webhook Delivery Engine   │
-      │  (MySQL 8.0 / Async SQLite)  │          │   (HMAC SHA-256 Signatures)  │
-      └──────────────────────────────┘          └──────────────────────────────┘
+                                  [ Web / Mobile Client ]
+                                             │
+                   ┌─────────────────────────┴─────────────────────────┐
+                   ▼                                                   ▼
+       [ Hosted Checkout Pages ]                           [ Merchant Backend Apps ]
+        (/checkout/:sessionId)                               (Bearer sk_live_...)
+                   │                                                   │
+                   └─────────────────────────┬─────────────────────────┘
+                                             ▼
+       ┌───────────────────────────────────────────────────────────────────────────┐
+       │                        PAYCORE API Gateway v1.0                           │
+       │    (FastAPI + JWT Auth + Google OAuth 2.0 + Idempotency Engine + CORS)     │
+       └─────────────────────────────────────┬─────────────────────────────────────┘
+                                             │
+                      ┌──────────────────────┴──────────────────────┐
+                      ▼                                             ▼
+       ┌──────────────────────────────┐              ┌──────────────────────────────┐
+       │    Payment State Machine     │              │     Risk & Velocity Engine   │
+       │  (Strict Lifecycle Manager)  │              │    (Rule-based Fraud Check)  │
+       └──────────────┬───────────────┘              └──────────────┬───────────────┘
+                      │                                             │
+                      └──────────────────────┬──────────────────────┘
+                                             ▼
+                                ┌─────────────────────────┐
+                                │ Dynamic Payment Router  │
+                                └────────────┬────────────┘
+                                             ▼
+                          ┌─────────────────────────────────────┐
+                          │    Pluggable Banking & PG Rails     │
+                          ├─────────────────────────────────────┤
+                          │ • Card & Netbanking Gateway Rail    │
+                          │ • UPI AutoPay 2.0 Recurring Rail    │
+                          │ • 24x7 IMPS / NEFT Disbursal Rail   │
+                          │ • Sandbox Interactive Simulator     │
+                          └──────────────────┬──────────────────┘
+                                             │
+                      ┌──────────────────────┴──────────────────────┐
+                      ▼                                             ▼
+       ┌──────────────────────────────┐              ┌──────────────────────────────┐
+       │   Double-Entry SQL Ledger    │              │    Webhook Delivery Engine   │
+       │  (MySQL 8.0 / Async SQLite)  │              │   (HMAC SHA-256 Signatures)  │
+       └──────────────────────────────┘              └──────────────────────────────┘
 ```
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Layer | Technology |
-|---|---|
-| **Backend Framework** | [FastAPI](https://fastapi.tiangolo.com/) (Python 3.12, Async/Await) |
-| **ASGI Server** | [Uvicorn](https://www.uvicorn.org/) with multi-worker support |
-| **Database & ORM** | [MySQL 8.0](https://www.mysql.com/) & [aiosqlite](https://github.com/omnilib/aiosqlite) with [SQLAlchemy 2.0](https://www.sqlalchemy.org/) |
-| **Data Validation** | [Pydantic v2](https://docs.pydantic.dev/) & [email-validator](https://github.com/JoshData/python-email-validator) |
-| **Security & Auth** | Argon2 / Bcrypt, PyJWT (HMAC-SHA256), Google OAuth token verification |
-| **Frontend Framework** | [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) + [Vite 8](https://vitejs.dev/) |
-| **Styling & Icons** | Vanilla CSS + [Tailwind CSS v4](https://tailwindcss.com/) + [Lucide React](https://lucide.dev/) |
-| **Charts & Analytics** | [Recharts](https://recharts.org/) |
-| **Testing** | [Pytest](https://docs.pytest.org/) & [pytest-asyncio](https://github.com/pytest-dev/pytest-asyncio) |
+- **Backend**: Python 3.12, FastAPI, Uvicorn, SQLAlchemy 2.0 (Async), Pydantic v2, PyJWT, ReportLab
+- **Frontend**: React 18, TypeScript, Vite 8, Lucide React, Recharts, Formik + Yup
+- **Databases**: MySQL 8.0 / PostgreSQL (Production), SQLite Async (Development/Testing)
+- **Security**: Argon2 / Bcrypt password hashing, HMAC SHA-256 webhook signatures, PCI-DSS SAQ-A compliance architecture
+- **Design System**: Cashfree Light Design System (`#0066FF` brand blue, `#00D284` mint green, `#F8FAFC` background)
 
 ---
 
-## ⚡ Quick Start (Single Command Run)
+## 🚀 Quick Start (Local Development)
 
-### 1. Clone the Repository
+### 1. Prerequisites
+- Python 3.10+
+- Node.js 18+ and npm
+- Git
+
+### 2. Clone & Setup
 ```bash
 git clone https://github.com/chandan-me/PAYCORE.git
 cd PAYCORE
-```
-
-### 2. Environment Configuration
-Copy the sample environment file to `.env`:
-```bash
 cp .env.example .env
 ```
-*(Optional: Add your Google OAuth credentials to `.env` if testing real Google Login).*
 
-```ini
-GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-```
-
-### 3. Launch the Platform
-Start both the **FastAPI Backend (Port 8000)** and **Vite Frontend (Port 5173)** with one command:
-
+### 3. Launch Development Server
+Run the full platform with a single command:
 ```bash
 python run.py
 ```
-*On Windows, you can also double-click `run.bat`.*
+*(On Windows, you can also double-click `run.bat`)*
 
-- **Frontend Application**: `http://localhost:5173`
-- **Backend API & Swagger Docs**: `http://localhost:8000/docs`
-- **Developer API Reference**: `http://localhost:5173/docs/api`
+- **Merchant Portal & Landing**: [http://localhost:5173](http://localhost:5173)
+- **Interactive REST API Docs (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Developer API Reference**: [http://localhost:5173/docs/api](http://localhost:5173/docs/api)
 
 ---
 
-## 🧪 Running Automated Tests
+## 🌐 Production Deployment Guide (To The World)
 
-Run the full async backend test suite (covering dispute workflows, full payment lifecycles, refunds, PDF invoices, payment links, state machine validation, payouts, and subscriptions):
+To deploy **PAYCORE** for real-world production use across the internet, follow the enterprise deployment strategies below.
+
+### Method 1: Docker Compose (Single or Multi-Node Server)
+
+Create a production `docker-compose.prod.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_DATABASE: paycore
+      MYSQL_USER: paycore_user
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - paycore-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      DATABASE_URL: mysql+aiomysql://paycore_user:${DB_PASSWORD}@db:3306/paycore
+      JWT_SECRET: ${JWT_SECRET}
+      APP_ENV: production
+      CORS_ORIGINS: "https://yourdomain.com,https://api.yourdomain.com"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    networks:
+      - paycore-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    networks:
+      - paycore-net
+
+volumes:
+  db_data:
+
+networks:
+  paycore-net:
+    driver: bridge
+```
+
+Launch production cluster:
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+---
+
+### Method 2: Nginx Reverse Proxy with Free SSL (Let's Encrypt / Certbot)
+
+Sample `/etc/nginx/sites-available/paycore.conf`:
+
+```nginx
+# API & Webhook Subdomain
+server {
+    server_name api.yourdomain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Frontend Merchant Portal & Checkout
+server {
+    server_name yourdomain.com www.yourdomain.com;
+    root /var/www/paycore/frontend/dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+```
+
+Enable SSL certificate with Certbot:
+```bash
+sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com -d api.yourdomain.com
+```
+
+---
+
+### Method 3: Cloud Deployment (AWS / GCP / Render / Railway)
+
+1. **Backend (Container / Cloud Run / App Runner)**:
+   - Command: `uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4`
+   - Set environment variables for `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGINS`.
+2. **Frontend (Vercel / Netlify / AWS CloudFront + S3)**:
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+   - Set environment variable `VITE_API_URL=https://api.yourdomain.com`
+
+---
+
+## 🔑 Default Sandbox Credentials
+
+| Account Role | Email Address | Password | Permissions |
+|---|---|---|---|
+| **Platform Administrator** | `admin@paycore.dev` | `Admin@12345` | Global oversight, system ledgers, all merchants |
+| **Merchant Administrator** | `merchant@paycore.dev` | `Merchant@12345` | Payments, payouts, API keys, KYC onboarding |
+
+---
+
+## 🧪 Automated Testing Suite
+
+PAYCORE comes with a 100% passing test suite:
 
 ```bash
 cd backend
 python -m pytest tests/ -v
 ```
 
-**Expected output:**
-```text
-tests/test_disputes.py::test_dispute_evidence_and_resolution PASSED      [ 12%]
-tests/test_end_to_end_flow.py::test_full_payment_and_refund_lifecycle PASSED [ 25%]
-tests/test_invoices_payment_links.py::test_invoice_creation_and_pdf PASSED [ 37%]
-tests/test_invoices_payment_links.py::test_payment_link_flow PASSED      [ 50%]
-tests/test_payment_state_machine.py::test_valid_transitions PASSED       [ 62%]
-tests/test_payment_state_machine.py::test_invalid_transitions PASSED     [ 75%]
-tests/test_settlements_payouts.py::test_settlement_and_payout_flow PASSED [ 87%]
-tests/test_subscriptions.py::test_subscription_lifecycle PASSED          [100%]
-======================== 8 passed in 1.75s =========================
-```
-<<<<<<< HEAD
+**Test Coverage Highlights:**
+- `test_end_to_end_flow.py`: Full payment authorization, capture, and partial/full refund lifecycle
+- `test_disputes.py`: Chargeback creation, evidence submission, and rebuttal arbitration
+- `test_settlements_payouts.py`: 24x7 IMPS disbursals, UTR tracking, and ledger balance locks
+- `test_subscriptions.py`: UPI AutoPay 2.0 recurring mandate creation and auto-debit triggers
+- `test_invoices_payment_links.py`: GST invoicing calculations and PDF generation
+- `test_payment_state_machine.py`: Non-reversible state transition enforcement
 
 ---
 
-## 🔑 Default Sandbox Accounts
+## 📖 API Reference & Code Examples
 
-| Role | Email | Password |
-|---|---|---|
-| **Platform Administrator** | `admin@paycore.dev` | `Admin@12345` |
-| **Merchant Administrator** | `merchant@paycore.dev` | `Merchant@12345` |
-
----
-
-## 📖 API Documentation & Quick cURL
-
-### Create a Payment Intent
+### 1. Initialize a Payment Intent
 ```bash
-curl -X POST http://localhost:8000/v1/payment_intents \
-  -H "Authorization: Bearer sk_test_acmedemo987654321" \
-  -H "Idempotency-Key: order_10001" \
+curl -X POST https://api.yourdomain.com/v1/payment_intents \
+  -H "Authorization: Bearer sk_live_your_secret_key" \
+  -H "Idempotency-Key: order_tx_88921" \
   -H "Content-Type: application/json" \
   -d '{
     "amount": 249900,
     "currency": "INR",
-    "description": "Pro Annual Plan Subscription"
+    "description": "Annual SaaS Enterprise Subscription",
+    "customer": {
+      "email": "customer@example.com",
+      "phone": "+919876543210",
+      "name": "Rajesh Sharma"
+    }
   }'
 ```
 
-### Disburse an Instant Bank Payout (24x7 IMPS)
+### 2. Disburse 24x7 Bank Payout (IMPS / NEFT)
 ```bash
-curl -X POST http://localhost:8000/v1/payouts \
-  -H "Authorization: Bearer sk_test_acmedemo987654321" \
+curl -X POST https://api.yourdomain.com/v1/payouts \
+  -H "Authorization: Bearer sk_live_your_secret_key" \
   -H "Content-Type: application/json" \
   -d '{
-    "amount": 4500000,
+    "amount": 1500000,
     "currency": "INR",
-    "beneficiary_name": "Acme Global Corp",
+    "beneficiary_name": "Acme Technologies Pvt Ltd",
     "account_number": "918237461234",
     "ifsc": "HDFC0000123",
     "transfer_mode": "IMPS"
   }'
 ```
 
+### 3. Verify Webhook Signature (Python / HMAC-SHA256)
+```python
+import hmac
+import hashlib
+
+def verify_paycore_signature(payload_bytes: bytes, signature_header: str, secret: str) -> bool:
+    expected = hmac.new(secret.encode('utf-8'), payload_bytes, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature_header)
+```
+
 ---
 
-## 📜 License
-This project is open source and available under the [MIT License](LICENSE).
-=======
->>>>>>> dcc2ca6b4222f53ca93b08b771a7dc73c6d83db0
+## 📜 Compliance & Security Architecture
+
+- **PCI-DSS Level 1 Ready**: Card PAN and CVV data are tokenized client-side and never touch persistent merchant databases.
+- **Double-Entry Ledger Integrity**: Every transaction records strict balancing debit and credit entries down to the exact paisa/cent.
+- **Idempotency Guard**: Guarantees that network retries with identical `Idempotency-Key` headers will never result in duplicate charges.
+- **Cryptographic Signatures**: Webhook payloads are signed with HMAC-SHA256 using merchant-specific rotating secret keys.
+
+---
+
+## 📄 License
+This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for details.

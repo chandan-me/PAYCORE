@@ -6,6 +6,7 @@ import { User, Mail, Lock, Phone, ArrowRight, AlertCircle, CheckCircle2, Eye, Ey
 import api from '../../services/api';
 
 import { PaycoreLogo } from '../../components/PaycoreLogo';
+import { useToast } from '../../context/ToastContext';
 
 interface Props {
   onLoginSuccess: (token: string, user: any, merchantId?: string) => void;
@@ -37,10 +38,18 @@ export const RegisterPage: React.FC<Props> = ({ onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToast();
 
   const notice = (location.state as any)?.notice;
   const initialGoogleToken = (location.state as any)?.google_token;
   const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
+
+  // Display notice toast if redirected from login
+  useEffect(() => {
+    if (notice) {
+      toast.info('Sign-Up Required', notice, 6000);
+    }
+  }, [notice]);
 
   const handleGoogleRegisterCredential = async (google_token: string) => {
     setLoading(true);
@@ -52,11 +61,14 @@ export const RegisterPage: React.FC<Props> = ({ onLoginSuccess }) => {
         mode: 'register'
       });
       const { access_token, user_id, role, merchant_id, email: userEmail } = resp.data;
+      toast.success('Registration Succeeded!', `Welcome to PAYCORE, ${userEmail}! Merchant profile provisioned.`);
       onLoginSuccess(access_token, { id: user_id, email: userEmail, role }, merchant_id);
       navigate('/dashboard/onboarding');
     } catch (err: any) {
       const detail = err.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : 'Google Sign-Up failed.');
+      const errMsg = typeof detail === 'string' ? detail : 'Google Sign-Up failed.';
+      setError(errMsg);
+      toast.error('Google Sign-Up Failed', errMsg);
     } finally {
       setLoading(false);
     }
@@ -126,15 +138,17 @@ export const RegisterPage: React.FC<Props> = ({ onLoginSuccess }) => {
           role: 'MERCHANT_ADMIN'
         });
         const { access_token, user_id, role, merchant_id } = resp.data;
+        toast.success(
+          'Account Created Successfully!',
+          `Merchant profile and ledger accounts initialized for ${values.fullName.trim()}.`
+        );
         onLoginSuccess(access_token, { id: user_id, email: values.email, full_name: values.fullName, role }, merchant_id);
         navigate('/dashboard/onboarding');
       } catch (err: any) {
         const detail = err.response?.data?.detail;
-        if (Array.isArray(detail)) {
-          setError(detail.map(d => d.msg).join(', '));
-        } else {
-          setError(detail || 'Registration failed. Please check inputs.');
-        }
+        const errMsg = Array.isArray(detail) ? detail.map(d => d.msg).join(', ') : (detail || 'Registration failed. Please check inputs.');
+        setError(errMsg);
+        toast.error('Registration Failed', errMsg);
       } finally {
         setLoading(false);
       }
